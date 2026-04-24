@@ -1,0 +1,21 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.idea/
+.vscode/
+
+# User uploads (runtime data)
+backend/uploads/*.jpg
+backend/uploads/*.jpeg
+backend/uploads/*.png

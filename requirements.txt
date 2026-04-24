@@ -1,0 +1,11 @@
+# Lenskart Claire AI — Backend Requirements
+# All packages are Python stdlib only (no install needed)
+#
+# Optional — for live Claude AI integration:
+#   pip install anthropic
+#
+# The server uses only built-in modules:
+#   http.server, json, base64, uuid, pathlib, re, hashlib
+#
+# To run: python3 backend/server.py
+# Or:     bash start.sh

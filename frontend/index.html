@@ -1,0 +1,3754 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lenskart Claire — AI Eyewear Stylist</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        lk: {
+          teal:      '#00C3C3',
+          tealDark:  '#008B8B',
+          tealGlow:  'rgba(0,195,195,0.15)',
+          navy:      '#003D5B',
+          bg:        '#070E1C',
+          card:      '#0D1B2E',
+          cardLight: '#132338',
+          border:    '#1A3050',
+          orange:    '#FF6B35',
+          purple:    '#7C3AED',
+          gold:      '#F59E0B',
+        }
+      }
+    }
+  }
+}
+</script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; }
+  html, body, #root { height: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #070E1C; color: #F1F5F9; overflow: hidden; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #070E1C; }
+  ::-webkit-scrollbar-thumb { background: #1A3050; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #00C3C3; }
+
+  .carousel-scroll { overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none; }
+  .carousel-scroll::-webkit-scrollbar { display: none; }
+  .snap-start { scroll-snap-align: start; }
+
+  @keyframes msgIn { from { opacity:0; transform:translateY(14px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+  .msg-enter { animation: msgIn .35s cubic-bezier(.34,1.56,.64,1) both; }
+
+  @keyframes dotBounce { 0%,80%,100% { transform:scale(.55); opacity:.4; } 40% { transform:scale(1); opacity:1; } }
+  .dot1 { animation: dotBounce 1.3s infinite; }
+  .dot2 { animation: dotBounce 1.3s .18s infinite; }
+  .dot3 { animation: dotBounce 1.3s .36s infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 1s linear infinite; }
+
+  @keyframes scoreRise { from { stroke-dashoffset: 283; } to { stroke-dashoffset: var(--dash-offset); } }
+  .score-arc { animation: scoreRise 1.4s cubic-bezier(.4,0,.2,1) forwards; }
+
+  @keyframes shimmer { from { background-position: -300% 0; } to { background-position: 300% 0; } }
+  @keyframes waveBar { 0% { transform: scaleY(0.4); } 100% { transform: scaleY(1.6); } }
+  .shimmer { background: linear-gradient(90deg, #0D1B2E 25%, #1A3050 50%, #0D1B2E 75%); background-size: 300% 100%; animation: shimmer 2s infinite; }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  .fade-up { animation: fadeUp .4s ease both; }
+
+  @keyframes glow { 0%,100% { box-shadow: 0 0 0 rgba(0,195,195,0); } 50% { box-shadow: 0 0 18px rgba(0,195,195,.35); } }
+  .pulse-glow { animation: glow 2.4s ease-in-out infinite; }
+
+  .glass { background: rgba(13,27,46,.82); backdrop-filter: blur(14px); border: 1px solid rgba(0,195,195,.12); }
+  .glass-light { background: rgba(19,35,56,.7); backdrop-filter: blur(8px); border: 1px solid rgba(0,195,195,.08); }
+
+  .btn-teal { background: linear-gradient(135deg, #00C3C3, #006E6E); color: #fff; font-weight: 600; transition: all .2s; }
+  .btn-teal:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(0,195,195,.4); }
+  .btn-teal:active { transform: translateY(0); }
+
+  .btn-ghost { border: 1.5px solid rgba(0,195,195,.4); color: #00C3C3; background: transparent; transition: all .2s; }
+  .btn-ghost:hover { background: rgba(0,195,195,.1); border-color: #00C3C3; }
+
+  .frame-card { transition: transform .22s ease, box-shadow .22s ease; }
+  .frame-card:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(0,195,195,.18); }
+
+  .sidebar-item { transition: background .18s, color .18s; }
+  .sidebar-item:hover { background: rgba(0,195,195,.08); }
+
+  .gradient-text { background: linear-gradient(135deg, #00C3C3, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .teal-text { color: #00C3C3; }
+
+  .drag-active { border-color: #00C3C3 !important; background: rgba(0,195,195,.06) !important; }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; }
+  input[type=range]::-webkit-slider-track { height: 4px; border-radius: 2px; background: #1A3050; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #00C3C3; cursor: pointer; margin-top: -6px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+/* ═══════════════════════════════════════════════════════════
+   CONSTANTS
+════════════════════════════════════════════════════════════ */
+const API = 'http://localhost:8000';
+
+const FACE_EMOJI = { Oval:'🟡', Round:'🔵', Square:'⬛', Heart:'❤️', Diamond:'💎', Oblong:'📏' };
+
+/* ── Client-side face shape data (mirrors backend) ── */
+const CLIENT_FACE_SHAPES = [
+  { shape:'Oval',    description:'You have a beautifully balanced oval face — slightly longer than wide with gently rounded features. The most versatile face shape for frames!', face_width:'Medium', recommended_styles:['wayfarer','aviator','square','round','geometric','clubmaster'], key_feature:'Balanced proportions — almost any frame style works beautifully', celebrity_match:'Bella Hadid, Ryan Reynolds', confidence:94 },
+  { shape:'Round',   description:'Your face has soft, curved features with nearly equal width and height. Angular frames create a striking contrast that adds definition.', face_width:'Medium', recommended_styles:['square','wayfarer','geometric','clubmaster','rimless'], key_feature:'Angular frames add length and definition to soft features', celebrity_match:'Emma Stone, Channing Tatum', confidence:91 },
+  { shape:'Square',  description:'Your face has a strong, defined jawline with angular features and roughly equal width. Softer, rounder frames balance those sharp angles beautifully.', face_width:'Wide', recommended_styles:['round','oval','aviator','cat-eye','rimless'], key_feature:'Curved frames soften and balance strong angular features', celebrity_match:'Angelina Jolie, Brad Pitt', confidence:89 },
+  { shape:'Heart',   description:'Your face is wider at the forehead tapering to a delicate chin. Bottom-heavy or light frames balance proportions beautifully.', face_width:'Wide forehead', recommended_styles:['aviator','oval','rimless','round'], key_feature:'Light, bottom-heavy frames complement a wide forehead beautifully', celebrity_match:'Reese Witherspoon, Ryan Gosling', confidence:92 },
+  { shape:'Diamond', description:'You have striking high cheekbones with a narrow forehead and jawline — one of the rarest face shapes! Frames that add width at the brow work perfectly.', face_width:'Narrow', recommended_styles:['cat-eye','oval','rimless','butterfly','clubmaster'], key_feature:'Wider frames at the top balance and complement high cheekbones', celebrity_match:'Halle Berry, Johnny Depp', confidence:88 },
+  { shape:'Oblong',  description:'Your face is longer than wide with a long, straight cheek line. Wider, shorter frames add fullness and balance the length beautifully.', face_width:'Narrow', recommended_styles:['round','square','butterfly','wayfarer'], key_feature:'Wide, decorative frames add width and break up a long face shape', celebrity_match:'Sarah Jessica Parker, Adam Driver', confidence:90 },
+];
+
+/* ── Client-side frame catalog (mirrors backend) ── */
+const CLIENT_FRAMES = [
+  { id:'LK-HC-001', name:'Horizon Classic',    brand:'Vincent Chase',    style:'wayfarer',   shape_suitability:['oval','heart','diamond','oblong'], color:'Matte Black',     color_hex:'#1a1a1a', price:1499, original_price:2999, material:'Premium Acetate',   gender:'unisex', rating:4.5, reviews:3124, frame_width:'medium', bestseller:true,  new_arrival:false, tags:['bestseller','classic','lightweight'],   description:'Timeless wayfarer silhouette crafted from premium Italian acetate.' },
+  { id:'LK-AV-002', name:'AeroGlide Aviator',  brand:'John Jacobs',      style:'aviator',    shape_suitability:['oval','round','heart'],            color:'Gold / Green',    color_hex:'#c9a84c', price:2299, original_price:4599, material:'Titanium',          gender:'unisex', rating:4.7, reviews:1842, frame_width:'medium', bestseller:true,  new_arrival:false, tags:['premium','lightweight','titanium'],     description:'Featherlight titanium aviators with anti-reflective green lenses.' },
+  { id:'LK-RD-003', name:'Velvet Round',       brand:'Vincent Chase',    style:'round',      shape_suitability:['square','diamond','oblong'],       color:'Tortoise Brown',  color_hex:'#8B4513', price:999,  original_price:1999, material:'Acetate',           gender:'unisex', rating:4.3, reviews:2651, frame_width:'medium', bestseller:false, new_arrival:false, tags:['vintage','retro','trendy'],            description:'Vintage-inspired round frames with a rich tortoise shell finish.' },
+  { id:'LK-CE-004', name:'Noir Cat Eye',       brand:'Lenskart Blu',     style:'cat-eye',    shape_suitability:['round','oval','square'],           color:'Glossy Black',    color_hex:'#0d0d0d', price:1799, original_price:2999, material:'Acetate',           gender:'female', rating:4.6, reviews:1923, frame_width:'medium', bestseller:false, new_arrival:true,  tags:['feminine','editorial','bold'],         description:'Dramatically upswept cat-eye for editorial-worthy style.' },
+  { id:'LK-RM-005', name:'Clarity Rimless',    brand:'John Jacobs',      style:'rimless',    shape_suitability:['oval','square','oblong','heart'],  color:'Silver',          color_hex:'#C0C0C0', price:2799, original_price:4999, material:'Titanium',          gender:'unisex', rating:4.4, reviews:987,  frame_width:'narrow', bestseller:false, new_arrival:false, tags:['minimalist','professional','lightweight'], description:'Barely-there rimless titanium frames for a clean, professional look.' },
+  { id:'LK-GE-006', name:'Edge Geometric',     brand:'Lenskart Blu',     style:'geometric',  shape_suitability:['oval','round','heart'],            color:'Rose Gold',       color_hex:'#B76E79', price:1599, original_price:2999, material:'Metal',             gender:'female', rating:4.5, reviews:1445, frame_width:'medium', bestseller:false, new_arrival:true,  tags:['trendy','geometric','fashion-forward'], description:'Hexagonal rose-gold frames where architecture meets fashion.' },
+  { id:'LK-SP-007', name:'ProSport Wrap',      brand:'Lenskart Sports',  style:'sports',     shape_suitability:['oval','square','oblong'],          color:'Matte Blue',      color_hex:'#1e3a5f', price:1299, original_price:2499, material:'TR90 Nylon',        gender:'male',   rating:4.4, reviews:2213, frame_width:'wide',   bestseller:false, new_arrival:false, tags:['sports','durable','active'],           description:'Flexible TR90 wrap-around frames engineered for active lifestyles.' },
+  { id:'LK-SQ-008', name:'Urban Square',       brand:'Vincent Chase',    style:'square',     shape_suitability:['oval','round','heart'],            color:'Crystal Clear',   color_hex:'#d4eaf7', price:1199, original_price:1999, material:'Acetate',           gender:'unisex', rating:4.2, reviews:3321, frame_width:'medium', bestseller:false, new_arrival:false, tags:['minimal','clear','contemporary'],      description:'Angular clear-frame glasses — minimal aesthetic, maximum impact.' },
+  { id:'LK-BF-009', name:'Luxe Butterfly',     brand:'Lenskart Gold',    style:'butterfly',  shape_suitability:['square','diamond','oblong'],       color:'Purple Gradient', color_hex:'#6a0dad', price:3299, original_price:5999, material:'Premium Acetate',   gender:'female', rating:4.8, reviews:765,  frame_width:'wide',   bestseller:true,  new_arrival:true,  tags:['luxury','statement','gradient'],       description:'Oversized butterfly frames with a mesmerising purple gradient.' },
+  { id:'LK-OV-010', name:'Classic Oval',       brand:'Vincent Chase',    style:'oval',       shape_suitability:['square','diamond','heart'],        color:'Gunmetal',        color_hex:'#2c3e50', price:899,  original_price:1799, material:'Metal',             gender:'unisex', rating:4.1, reviews:4231, frame_width:'narrow', bestseller:false, new_arrival:false, tags:['evergreen','affordable','versatile'],  description:'Sleek metal oval frames that pair effortlessly with any outfit.' },
+  { id:'LK-HC-011', name:'Slim Hexagon',       brand:'John Jacobs',      style:'geometric',  shape_suitability:['round','oval','square'],           color:'Matte Gold',      color_hex:'#b8860b', price:2199, original_price:3999, material:'Titanium',          gender:'unisex', rating:4.6, reviews:1102, frame_width:'medium', bestseller:false, new_arrival:false, tags:['premium','editorial','lightweight'],   description:'Ultra-thin hexagonal titanium frames for the design-conscious.' },
+  { id:'LK-WF-012', name:'Heritage Clubmaster',brand:'Lenskart Vintage', style:'clubmaster', shape_suitability:['oval','square','heart','diamond'], color:'Black / Gold',    color_hex:'#1a1a1a', price:1899, original_price:3499, material:'Acetate + Metal',   gender:'unisex', rating:4.7, reviews:2876, frame_width:'medium', bestseller:true,  new_arrival:false, tags:['heritage','retro','iconic'],           description:'The iconic clubmaster — acetate brow bar over a metal lower frame.' },
+];
+
+/* ── Deterministic client-side face analysis (no backend needed) ── */
+function clientAnalyzeFace(dataUri) {
+  let hash = 0;
+  const sample = dataUri.slice(22, 622); // skip data URI prefix, sample ~600 chars
+  for (let i = 0; i < sample.length; i++) {
+    hash = Math.imul(31, hash) + sample.charCodeAt(i) | 0;
+  }
+  const idx = Math.abs(hash) % CLIENT_FACE_SHAPES.length;
+  return { success: true, ...CLIENT_FACE_SHAPES[idx] };
+}
+
+/* ── Client-side frame search (no backend needed) ── */
+function clientSearchFrames(shape, limit = 6) {
+  const shapeLower = (shape || '').toLowerCase();
+  let results = shapeLower
+    ? CLIENT_FRAMES.filter(f => f.shape_suitability.includes(shapeLower))
+    : [...CLIENT_FRAMES];
+  if (results.length < 3) results = [...CLIENT_FRAMES];
+  results.sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0) || b.rating - a.rating);
+  return results.slice(0, limit);
+}
+
+/* ── Client-side tag extractor (mirrors Python heuristics) ── */
+function extractTagsFromText(text) {
+  const t = (text || '').toLowerCase();
+  const tags = {};
+  const has = (...words) => words.some(w => t.includes(w));
+
+  // Budget
+  if (has('500 se niche','under 500','below 500'))      { tags.budget = 'under_500';  tags.price = 'budget'; }
+  else if (has('under 1000','1000 se kam','sasta','cheap')) { tags.budget = 'under_1000'; tags.price = 'budget'; }
+  else if (has('under 1500','1500'))                    { tags.budget = 'under_1500'; tags.price = 'budget'; }
+  else if (has('under 2000','2000 tak','do hazaar'))    { tags.budget = 'under_2000'; tags.price = 'mid-range'; }
+  else if (has('under 2500','2500'))                    { tags.budget = 'under_2500'; tags.price = 'mid-range'; }
+  else if (has('under 3000','3000'))                    { tags.budget = 'under_3000'; tags.price = 'mid-range'; }
+  else if (has('premium','3500+','luxury','mehnga','above 3000')) { tags.budget = 'above_3000'; tags.price = 'premium'; }
+  else if (has('affordable','budget-friendly'))         { tags.budget = 'under_1000'; tags.price = 'budget'; }
+
+  // Vision / product type
+  if (has('bina power','zero power','no power','fashion only','sirf style')) tags.vision_need = 'zero_power';
+  else if (has('power wala','power chahiye','number wali','single vision','prescription')) tags.vision_need = 'single_vision';
+  else if (has('progressive','bifocal','reading')) tags.vision_need = 'progressive';
+
+  if (has('sunglass','goggle','dhoop','uv wali'))        tags.product_type = 'sunglasses';
+  else if (has('contact','lens'))                        tags.product_type = 'contact_lens';
+  else if (has('chashma','specs','eyeglass'))            tags.product_type = 'eyeglasses';
+
+  // Color type
+  if (has('light color','halka rang','light wali','light frame'))       tags.color_type = 'light';
+  else if (has('dark color','dark wali','gehra rang','dark frame'))      tags.color_type = 'dark';
+
+  if (has('neutral','black','grey','gray','brown','gunmetal'))  tags.color = 'neutral';
+  else if (has('warm','gold','tortoise','amber'))                tags.color = 'warm';
+  else if (has('cool','blue','silver'))                          tags.color = 'cool';
+  else if (has('bright','bold rang','colorful','statement'))     tags.color = 'statement';
+
+  // Lifestyle / trend
+  if (has('office','professional','corporate','formal'))    tags.lifestyle = 'professional';
+  else if (has('sport','active','outdoor','gym','khel'))    tags.lifestyle = 'active';
+  else if (has('creative','artist'))                        tags.lifestyle = 'creative';
+  else if (has('fashion','trendy','stylish','swag'))        tags.lifestyle = 'fashion';
+
+  if (has('classic','timeless'))       tags.trend = 'classic';
+  else if (has('bold','statement'))    tags.trend = 'bold';
+  else if (has('minimal','simple'))    tags.trend = 'minimal';
+  else if (has('trendy','latest'))     tags.trend = 'trendy';
+
+  // Age / gender
+  if (has('kids','bachon','children','child'))              tags.age_group = 'kids';
+  else if (has('elderly','senior','uncle','aunty','aged'))  tags.age_group = 'aged';
+  if (has('ladies','women','female','girls'))               tags.gender_pref = 'female';
+  else if (has('gents','men','male','boys','ladkon'))        tags.gender_pref = 'male';
+
+  return tags;
+}
+
+/* ── Enrich product from DB format to frontend-compat format ── */
+function enrichProduct(p) {
+  return {
+    ...p,
+    shape_suitability: p.shape_suitability || p.face_shape_recommendation || [],
+    rating:        p.rating || p.avg_rating || 4.0,
+    reviews:       p.reviews || Math.round((p.avg_rating || 4.0) * 250),
+    original_price: p.original_price || p.strikeout_price || p.price,
+    bestseller:    p.bestseller ?? (p.tags || []).includes('bestseller'),
+    new_arrival:   p.new_arrival ?? (p.tags || []).includes('new-arrival'),
+    style:         p.style || p.frame_shape || 'wayfarer',
+    color_hex:     p.color_hex || '#00C3C3',
+  };
+}
+
+/* ── Filter constants for FilterableCarousel ── */
+const PRICE_CHIPS = [
+  { label: '< ₹500',  tag: 'under_500',  max: 500  },
+  { label: '< ₹1K',   tag: 'under_1000', max: 1000 },
+  { label: '< ₹2K',   tag: 'under_2000', max: 2000 },
+  { label: '₹3K+',    tag: 'above_3000', min: 3000 },
+];
+const TYPE_CHIPS = [
+  { label: '👓 Eyeglasses', value: 'eyeglasses' },
+  { label: '🕶️ Sunglasses', value: 'sunglasses' },
+  { label: '👁️ Contacts',   value: 'contact_lens' },
+];
+const COLOR_CHIPS = [
+  { label: '⬛ Dark',  value: 'dark'  },
+  { label: '⬜ Light', value: 'light' },
+  { label: '🟡 Warm',  value: 'warm'  },
+  { label: '🔵 Cool',  value: 'cool'  },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   VOICE LAYER — browser-native TTS + STT (no API keys)
+════════════════════════════════════════════════════════════ */
+
+// Language packs — intros + quiz questions localised
+const I18N = {
+  en: {
+    code: 'en-IN',
+    intro: "Hey, welcome to Lenskart! I'm Claire — your personal frames stylist. A few quick questions and I'll find you the perfect pair.",
+    quiz: [
+      { q: 'Are these frames for you, for him, for her, or for everyone?',
+        opts:['For me','For him','For her','For everyone'],                                                      key:'gender'       },
+      { q: 'And the age — just a number in years, like 10, 20, 35, or 55?',
+        opts:['Under 13','Around 20','Around 35','50 or older'],                                                 key:'age'          },
+      { q: 'Are we looking at eyeglasses, sunglasses, or contact lenses?',
+        opts:['Eyeglasses','Sunglasses','Contact lenses'],                                                       key:'product_type' },
+      { q: "What's the daily vibe — office work, something creative, active and outdoors, or fashion-forward?",
+        opts:['Office Professional','Creative & Artistic','Active & Outdoorsy','Fashion-Forward'],               key:'lifestyle'    },
+      { q: 'Which style feels most like you — classic and timeless, bold and trendy, minimal and clean, or adventurous?',
+        opts:['Classic & Timeless','Bold & Trendy','Minimal & Clean','Adventurous'],                             key:'style_pref'   },
+      { q: 'Colour vibe — neutral blacks and greys, warm golds and tortoise, cool blues and silvers, or a statement pop?',
+        opts:['Neutral (Black/Grey)','Warm (Gold/Tortoise)','Cool (Blue/Silver)','Statement Colour'],            key:'color_pref'   },
+      { q: 'Budget-wise, what suits — under 1000 rupees, 1000 to 2000, 2000 to 3500, or premium above 3500?',
+        opts:['Under ₹1,000','₹1,000 – ₹2,000','₹2,000 – ₹3,500','Premium ₹3,500+'],                            key:'budget'       },
+      { q: 'And the vision bit — do you have trouble seeing up close, or far away? Maybe it is mainly for computer work, or just zero power for fashion?',
+        opts:['Zero power (fashion only)','Single vision','Progressive / Bifocal','Computer / reading glasses'], key:'prescription' },
+    ],
+    thinking: 'Thinking…',
+    speakLabel: 'Speak answer',
+    stopSpeaking: 'Stop',
+  },
+  hi: {
+    code: 'hi-IN',
+    intro: "नमस्ते! Lenskart में आपका स्वागत है। मैं Claire हूँ — आपकी फ्रेम स्टाइलिस्ट। बस कुछ छोटे सवाल पूछूँगी और आपके लिए परफेक्ट चश्मा ढूँढ दूँगी।",
+    quiz: [
+      { q: 'ये चश्मा आपके लिए है, किसी पुरुष के लिए, किसी महिला के लिए, या सबके लिए?',
+        opts:['मेरे लिए','उनके लिए (पुरुष)','उनके लिए (महिला)','सबके लिए'],                                          key:'gender'       },
+      { q: 'और उम्र बताइए — सिर्फ सालों में। जैसे दस, बीस, पैंतीस, या पचपन साल।',
+        opts:['13 साल से कम','करीब 20 साल','करीब 35 साल','50 साल या उससे ज़्यादा'],                                  key:'age'          },
+      { q: 'आपको क्या चाहिए — साधारण चश्मा, धूप का चश्मा, या कॉन्टैक्ट लेंस?',
+        opts:['साधारण चश्मा','धूप का चश्मा','कॉन्टैक्ट लेंस'],                                                       key:'product_type' },
+      { q: 'आपका दिन कैसा गुज़रता है — ऑफिस में काम, क्रिएटिव काम, एक्टिव आउटडोर, या फैशन?',
+        opts:['ऑफिस प्रोफेशनल','क्रिएटिव आर्टिस्ट','एक्टिव स्पोर्ट्स','फैशन फॉरवर्ड'],                                  key:'lifestyle'    },
+      { q: 'आपको कौन सा स्टाइल पसंद है — क्लासिक, बोल्ड, मिनिमल, या एडवेंचरस?',
+        opts:['क्लासिक टाइमलेस','बोल्ड ट्रेंडी','मिनिमल क्लीन','एडवेंचरस'],                                           key:'style_pref'   },
+      { q: 'कौन सा रंग अच्छा लगेगा — काला और ग्रे, सुनहरा या ब्राउन, नीला या सिल्वर, या कोई चमकीला रंग?',
+        opts:['न्यूट्रल काला या ग्रे','वार्म गोल्ड या टॉर्टॉइज़','कूल ब्लू या सिल्वर','कोई बोल्ड रंग'],                    key:'color_pref'   },
+      { q: 'बजट कितना है — हज़ार से कम, एक से दो हज़ार, दो से साढ़े तीन हज़ार, या साढ़े तीन हज़ार से ज़्यादा?',
+        opts:['₹1,000 से कम','₹1,000 – ₹2,000','₹2,000 – ₹3,500','प्रीमियम ₹3,500+'],                             key:'budget'       },
+      { q: 'और आख़िरी सवाल — नज़र की ज़रूरत क्या है? पास का नहीं दिखता, दूर का नहीं दिखता, कंप्यूटर के लिए, या सिर्फ स्टाइल के लिए?',
+        opts:['ज़ीरो पावर (फैशन)','सिंगल विज़न','प्रोग्रेसिव / बाइफोकल','कंप्यूटर / पढ़ने के लिए'],                   key:'prescription' },
+    ],
+    thinking: 'सोच रही हूँ…',
+    speakLabel: 'बोल कर जवाब दें',
+    stopSpeaking: 'रोकें',
+  },
+};
+
+// ── Text-to-Speech (backend MP3 primary, browser fallback) ──────────
+const TTS_API = `${API}/api/tts`;
+let _currentAudio = null;
+let _playToken    = null;   // opaque token for the active multi-chunk playback
+const _speakState = { listeners: new Set(), speaking: false };
+
+function _setSpeaking(v) {
+  _speakState.speaking = v;
+  _speakState.listeners.forEach(fn => fn(v));
+}
+function onSpeakingChange(fn) {
+  _speakState.listeners.add(fn);
+  return () => _speakState.listeners.delete(fn);
+}
+function isSpeaking() { return _speakState.speaking; }
+
+// Strip emojis + markdown so TTS doesn't try to vocalise them
+function _cleanForSpeech(text) {
+  return (text || '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g,     '$1')
+    .replace(/`([^`]+)`/g,     '$1')
+    .replace(/[#>_~]/g,        ' ')
+    // Strip anything outside letters / digits / whitespace / basic punctuation
+    .replace(/[^\p{L}\p{N}\s.,?!:;'"\-()–—।₹]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Decode base64 → Blob for Audio element
+function _b64ToBlob(b64, mime) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+async function speak(text, lang = 'en', onDone) {
+  if (!text || !text.trim()) { if (onDone) onDone(); return; }
+  stopSpeaking();
+  const cleanText = _cleanForSpeech(text);
+  if (!cleanText) { if (onDone) onDone(); return; }
+
+  _setSpeaking(true);
+  const finish = () => {
+    _setSpeaking(false);
+    if (_currentAudio) {
+      try { URL.revokeObjectURL(_currentAudio.src); } catch {}
+      _currentAudio = null;
+    }
+    if (onDone) onDone();
+  };
+
+  // Fetch chunks from backend
+  let payload;
+  try {
+    const url = `${TTS_API}?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(cleanText)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`TTS HTTP ${resp.status}`);
+    payload = await resp.json();
+    if (!payload.success || !payload.chunks?.length) throw new Error('no chunks');
+  } catch (err) {
+    console.warn('[tts] backend failed — using browser voice fallback:', err);
+    _browserSpeak(cleanText, lang, finish);
+    return;
+  }
+
+  // Play each chunk sequentially in one continuous flow
+  const mime   = payload.mime || 'audio/mpeg';
+  const blobs  = payload.chunks.map(b => _b64ToBlob(b, mime));
+  let aborted  = false;
+  const token  = {};
+  _playToken = token;  // used by stopSpeaking() to abort this session
+
+  for (let i = 0; i < blobs.length; i++) {
+    if (aborted || _playToken !== token) break;
+    const src = URL.createObjectURL(blobs[i]);
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    _currentAudio = audio;
+    await new Promise((res) => {
+      audio.onended = () => { try { URL.revokeObjectURL(src); } catch {}; res(); };
+      audio.onerror = () => { try { URL.revokeObjectURL(src); } catch {}; aborted = true; res(); };
+      audio.play().catch(() => { aborted = true; res(); });
+    });
+    if (_playToken !== token) { aborted = true; break; }
+  }
+
+  finish();
+}
+
+function _browserSpeak(text, lang = 'en', onDone) {
+  if (!('speechSynthesis' in window)) { if (onDone) onDone(); return; }
+  try { window.speechSynthesis.cancel(); } catch {}
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang  = I18N[lang]?.code || 'en-IN';
+  u.rate  = lang === 'hi' ? 0.95 : 1.0;
+  u.pitch = 1.0;
+  const voices = window.speechSynthesis.getVoices();
+  const match  = voices.find(v => v.lang === u.lang) || voices.find(v => v.lang.startsWith(lang));
+  if (match) u.voice = match;
+  _setSpeaking(true);
+  u.onend   = () => { _setSpeaking(false); if (onDone) onDone(); };
+  u.onerror = () => { _setSpeaking(false); if (onDone) onDone(); };
+  window.speechSynthesis.speak(u);
+}
+
+function stopSpeaking() {
+  _playToken = null;  // aborts any pending multi-chunk sequence
+  try {
+    if (_currentAudio) {
+      _currentAudio.pause();
+      _currentAudio.currentTime = 0;
+      try { URL.revokeObjectURL(_currentAudio.src); } catch {}
+    }
+  } catch {}
+  _currentAudio = null;
+  try { window.speechSynthesis.cancel(); } catch {}
+  _setSpeaking(false);
+}
+
+// ── Voice pitch detector — infer gender from fundamental frequency ──────
+// Lightweight autocorrelation on a getUserMedia stream. We average the
+// pitch across the utterance; <165 Hz → male, >165 Hz → female. This is a
+// rough heuristic but good enough to bias "for me" answers.
+async function detectVoiceGender(durationMs = 2500) {
+  if (!navigator.mediaDevices?.getUserMedia || !window.AudioContext) return null;
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: {
+      echoCancellation: true, noiseSuppression: true,
+    }});
+  } catch { return null; }
+  const ctx = new AudioContext();
+  const src = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  src.connect(analyser);
+
+  const buf = new Float32Array(analyser.fftSize);
+  const sampleRate = ctx.sampleRate;
+
+  function autocorr() {
+    analyser.getFloatTimeDomainData(buf);
+    let rms = 0;
+    for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+    rms = Math.sqrt(rms / buf.length);
+    if (rms < 0.01) return null; // too quiet
+
+    // Find first strong correlation peak in a vocal-range lag window
+    const minLag = Math.floor(sampleRate / 400); // 400 Hz
+    const maxLag = Math.floor(sampleRate / 75);  // 75 Hz
+    let bestLag = -1, bestCorr = 0;
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      let c = 0;
+      for (let i = 0; i + lag < buf.length; i++) c += buf[i] * buf[i + lag];
+      if (c > bestCorr) { bestCorr = c; bestLag = lag; }
+    }
+    if (bestLag < 0 || bestCorr < 0.01) return null;
+    return sampleRate / bestLag;
+  }
+
+  const pitches = [];
+  const start   = performance.now();
+  return new Promise((resolve) => {
+    const tick = () => {
+      const p = autocorr();
+      if (p && p > 60 && p < 400) pitches.push(p);
+      if (performance.now() - start < durationMs) {
+        requestAnimationFrame(tick);
+      } else {
+        stream.getTracks().forEach(t => t.stop());
+        try { ctx.close(); } catch {}
+        if (pitches.length < 5) return resolve(null);
+        pitches.sort((a,b)=>a-b);
+        const median = pitches[Math.floor(pitches.length/2)];
+        resolve({
+          pitch_hz: Math.round(median),
+          gender: median < 165 ? 'male' : 'female',
+          samples: pitches.length,
+        });
+      }
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+// ── Speech-to-Text hook ──────────────────────────────────────
+// Uses the browser's built-in SpeechRecognition (low latency). We used to
+// also route audio to Gemini for higher accuracy, but the extra round-trip
+// made the voice UX too slow — rolled back in favour of instant SR.
+function useSpeechRecognition(lang = 'en') {
+  const [listening, setListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const recRef   = useRef(null);
+  const pitchRef = useRef(null);
+
+  const SR = typeof window !== 'undefined'
+    ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+    : null;
+  const supported = !!SR;
+
+  // Open a parallel mic stream and collect pitch samples for the duration of
+  // the speech recognition. Returns a stop() that yields {gender, pitch_hz}.
+  const _startPitch = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || !window.AudioContext) return null;
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+    } catch { return null; }
+    const ctx = new AudioContext();
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    src.connect(analyser);
+    const buf = new Float32Array(analyser.fftSize);
+    const sr = ctx.sampleRate;
+    const pitches = [];
+
+    let raf;
+    const tick = () => {
+      analyser.getFloatTimeDomainData(buf);
+      let rms = 0;
+      for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+      rms = Math.sqrt(rms / buf.length);
+      if (rms > 0.01) {
+        const minLag = Math.floor(sr / 400);
+        const maxLag = Math.floor(sr / 75);
+        let bestLag = -1, bestCorr = 0;
+        for (let lag = minLag; lag <= maxLag; lag++) {
+          let c = 0;
+          for (let i = 0; i + lag < buf.length; i++) c += buf[i] * buf[i + lag];
+          if (c > bestCorr) { bestCorr = c; bestLag = lag; }
+        }
+        if (bestLag > 0 && bestCorr > 0.01) {
+          const p = sr / bestLag;
+          if (p > 60 && p < 400) pitches.push(p);
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return {
+      stop: () => {
+        try { cancelAnimationFrame(raf); } catch {}
+        try { stream.getTracks().forEach(t => t.stop()); } catch {}
+        try { ctx.close(); } catch {}
+        if (pitches.length < 4) return null;
+        pitches.sort((a,b)=>a-b);
+        const median = pitches[Math.floor(pitches.length/2)];
+        return {
+          pitch_hz: Math.round(median),
+          gender: median < 165 ? 'male' : 'female',
+          samples: pitches.length,
+        };
+      }
+    };
+  };
+
+  const start = useCallback((onResult, opts = {}) => {
+    if (!SR) return;
+    if (isSpeaking()) return;   // echo guard
+    try { stopSpeaking(); } catch {}
+
+    const rec = new SR();
+    rec.lang = I18N[lang]?.code || 'en-IN';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+
+    // Optional pitch capture (runs in parallel for gender inference)
+    if (opts.capturePitch) {
+      _startPitch().then((p) => { pitchRef.current = p; });
+    }
+
+    let final = '';
+    rec.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) final += r[0].transcript; else interim += r[0].transcript;
+      }
+      setTranscript(final || interim);
+    };
+    rec.onend = () => {
+      setListening(false);
+      const pitchResult = pitchRef.current ? pitchRef.current.stop() : null;
+      pitchRef.current = null;
+      const out = (final || '').trim();
+      if (out && onResult) onResult(out, pitchResult);
+    };
+    rec.onerror = () => {
+      setListening(false);
+      if (pitchRef.current) { try { pitchRef.current.stop(); } catch {} pitchRef.current = null; }
+    };
+    recRef.current = rec;
+    setTranscript('');
+    setListening(true);
+    try { rec.start(); } catch { setListening(false); }
+  }, [SR, lang]);
+
+  const stop = useCallback(() => {
+    try { recRef.current?.stop?.(); } catch {}
+    setListening(false);
+  }, []);
+
+  return { listening, transcript, supported, start, stop };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LANGUAGE SELECTOR
+════════════════════════════════════════════════════════════ */
+function LanguageSelector({ onPick }) {
+  const [lang, setLang] = useState(null);
+  const [mode, setMode] = useState('hybrid'); // 'voice' | 'hybrid'
+
+  const confirm = () => {
+    if (!lang) return;
+    onPick(lang, mode);
+  };
+
+  return (
+    <div
+      className="fade-up"
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(7, 14, 28, 0.94)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+      }}
+    >
+      <div className="glass rounded-2xl p-6 w-full"
+           style={{ maxWidth: 480, border: '1.5px solid rgba(0,195,195,0.35)', boxShadow: '0 20px 60px rgba(0,195,195,0.15)' }}>
+        <div className="text-center mb-5">
+          <div className="text-4xl mb-2">👓✨</div>
+          <p className="text-xl font-bold gradient-text">Welcome to Claire</p>
+          <p className="text-sm text-slate-400 mt-2">Claire में आपका स्वागत है</p>
+        </div>
+
+        <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">1. Language / भाषा</p>
+        <div className="grid grid-cols-2 gap-2 mb-5">
+          <button onClick={() => setLang('en')}
+            className="px-3 py-3 rounded-xl font-semibold text-sm transition-all"
+            style={lang === 'en'
+              ? { background: '#00C3C3', color: '#fff', border: '1.5px solid #00C3C3' }
+              : { background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1.5px solid rgba(255,255,255,0.08)' }}>
+            🇬🇧 English
+          </button>
+          <button onClick={() => setLang('hi')}
+            className="px-3 py-3 rounded-xl font-semibold text-sm transition-all"
+            style={lang === 'hi'
+              ? { background: 'linear-gradient(135deg,#FF9933,#128807)', color: '#fff', border: '1.5px solid #FF9933' }
+              : { background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1.5px solid rgba(255,255,255,0.08)' }}>
+            🇮🇳 हिंदी
+          </button>
+        </div>
+
+        <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">2. Conversation style</p>
+        <div className="flex flex-col gap-2 mb-5">
+          <button onClick={() => setMode('voice')}
+            className="text-left px-4 py-3 rounded-xl transition-all"
+            style={mode === 'voice'
+              ? { background: 'rgba(0,195,195,0.12)', border: '1.5px solid #00C3C3' }
+              : { background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.06)' }}>
+            <p className="text-sm font-semibold text-white">🎙 Voice-only</p>
+            <p className="text-xs text-slate-400 mt-0.5">Hands-free. Just Claire's voice and a waveform — no chat on screen.</p>
+          </button>
+          <button onClick={() => setMode('hybrid')}
+            className="text-left px-4 py-3 rounded-xl transition-all"
+            style={mode === 'hybrid'
+              ? { background: 'rgba(0,195,195,0.12)', border: '1.5px solid #00C3C3' }
+              : { background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.06)' }}>
+            <p className="text-sm font-semibold text-white">💬 Voice + chat</p>
+            <p className="text-xs text-slate-400 mt-0.5">See the conversation on screen and reply by voice, text or buttons.</p>
+          </button>
+        </div>
+
+        <button onClick={confirm} disabled={!lang}
+          className="w-full px-5 py-3 rounded-xl font-semibold btn-teal text-base disabled:opacity-40">
+          {lang === 'hi' ? 'शुरू करें' : 'Start conversation'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VOICE-ONLY VIEW — pulsing waveform, no chat text
+════════════════════════════════════════════════════════════ */
+function VoiceOnlyView({ lang, onExit, onSend, registerAutoMic,
+                          lastAssistant, onFrameSelect, onFitScore,
+                          onFitPhotoUploaded, onSelectLens }) {
+  const [speaking, setSpeaking] = useState(false);
+  useEffect(() => onSpeakingChange(setSpeaking), []);
+  const { listening, supported, start, stop } = useSpeechRecognition(lang);
+
+  // Rich components to surface inline (carousel / face / lens / fit-score)
+  const richComps = (lastAssistant?.components || []).filter(
+    (c) => c.type !== 'quiz'
+  );
+
+  // If the pending quiz is the gender question, capture pitch during mic.
+  const pendingQuiz = (lastAssistant?.components || []).find(c => c.type === 'quiz');
+  const wantPitch   = pendingQuiz?.key === 'gender';
+
+  // Register the auto-mic trigger so the auto-speak effect can open the mic
+  useEffect(() => {
+    if (!registerAutoMic) return;
+    const trigger = () => {
+      if (isSpeaking() || listening) return;
+      start((t, pitch) => { if (t) onSend(t, 'text', null, null, pitch); },
+            { capturePitch: wantPitch });
+    };
+    registerAutoMic(trigger);
+    return () => registerAutoMic(null);
+  }, [registerAutoMic, listening, start, onSend, wantPitch]);
+
+  const toggleMic = () => {
+    if (listening) { stop(); return; }
+    if (speaking)  return;
+    start((t, pitch) => { if (t) onSend(t, 'text', null, null, pitch); },
+          { capturePitch: wantPitch });
+  };
+
+  const state = speaking ? 'speaking' : (listening ? 'listening' : 'idle');
+  const label = lang === 'hi'
+    ? (state === 'speaking' ? 'Claire बोल रही है…' : state === 'listening' ? 'सुन रही हूँ…' : 'अपना जवाब बोलें')
+    : (state === 'speaking' ? 'Claire is speaking…'   : state === 'listening' ? 'Listening…'   : 'Tap to speak');
+
+  // Build 40 animated bars
+  const bars = Array.from({length: 40}, (_, i) => i);
+
+  // When results are present, switch to a compact layout: avatar + mic pin
+  // to the top, products take the scrollable area. Otherwise use the centred
+  // conversation view.
+  const hasResults = richComps.length > 0;
+
+  // Shared pieces ------------------------------------------------------------
+  const avatarSize = hasResults ? 64 : 140;
+  const avatarFont = hasResults ? 28 : 56;
+  const micSize    = hasResults ? 56 : 84;
+  const micFont    = hasResults ? 22 : 30;
+
+  const avatar = (
+    <div style={{
+      width: avatarSize, height: avatarSize, borderRadius: '50%',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: avatarFont, flexShrink: 0,
+      background: 'linear-gradient(135deg, #00C3C3, #7C3AED)',
+      boxShadow: state === 'speaking'
+        ? '0 0 40px 12px rgba(0,195,195,0.45)'
+        : (state === 'listening' ? '0 0 40px 12px rgba(239,68,68,0.4)' : '0 0 20px rgba(0,195,195,0.2)'),
+      animation: state === 'speaking' ? 'glow 1.4s infinite' : 'none',
+      transition: 'all .3s ease',
+    }}>✨</div>
+  );
+
+  const waveform = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 3, height: hasResults ? 28 : 80, flex: 1, maxWidth: 440 }}>
+      {bars.map((i) => {
+        const delay = (i * 0.035) % 1.2;
+        const heightBase = state === 'idle' ? (hasResults ? 3 : 6) : (hasResults ? 6 : 10) + Math.abs(Math.sin(i * 0.4)) * (hasResults ? 8 : 18);
+        return (
+          <div key={i} style={{
+            width: 3, height: heightBase, borderRadius: 2,
+            background: state === 'listening' ? '#ef4444' : '#00C3C3',
+            opacity: state === 'idle' ? 0.25 : 0.85,
+            animation: state !== 'idle' ? `waveBar 0.85s ease-in-out ${delay}s infinite alternate` : 'none',
+            transition: 'background .3s',
+          }} />
+        );
+      })}
+    </div>
+  );
+
+  const micBtn = (
+    <button onClick={toggleMic} disabled={speaking || !supported}
+      style={{
+        width: micSize, height: micSize, borderRadius: '50%',
+        fontSize: micFont, border: 'none', cursor: speaking ? 'not-allowed' : 'pointer',
+        background: listening
+          ? 'linear-gradient(135deg, #ef4444, #991b1b)'
+          : 'linear-gradient(135deg, #00C3C3, #005F5F)',
+        color: '#fff', boxShadow: '0 10px 40px rgba(0,195,195,0.4)',
+        opacity: speaking ? 0.45 : 1,
+        flexShrink: 0,
+        transition: 'all .2s',
+      }}>
+      {listening ? '🛑' : '🎤'}
+    </button>
+  );
+
+  const exitBtn = (
+    <button onClick={onExit}
+      style={{
+        position: 'absolute', top: 16, right: 16, zIndex: 5,
+        padding: '6px 12px', borderRadius: 999,
+        background: 'rgba(255,255,255,0.06)', color: '#94A3B8',
+        border: '1px solid rgba(255,255,255,0.08)', fontSize: 12,
+      }}>
+      💬 Show chat
+    </button>
+  );
+
+  // ── Layout A: idle / talking with no results yet — centred hero view ──
+  if (!hasResults) {
+    return (
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'radial-gradient(circle at 50% 40%, rgba(0,195,195,0.15), #070E1C 70%)',
+        padding: 24, gap: 32, position: 'relative',
+      }}>
+        {exitBtn}
+        {avatar}
+        {waveform}
+        <p style={{ fontSize: 18, fontWeight: 600, color: '#E2E8F0', marginTop: -8 }}>{label}</p>
+        {micBtn}
+        {!supported && (
+          <p style={{ fontSize: 12, color: '#f87171' }}>
+            {lang === 'hi' ? 'माइक इस ब्राउज़र में उपलब्ध नहीं।' : 'Mic not supported in this browser.'}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ── Layout B: results present — compact header + scrollable products ──
+  return (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column',
+      background: '#070E1C', position: 'relative',
+    }}>
+      {exitBtn}
+      {/* Sticky voice header */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 4,
+        padding: '16px 20px',
+        background: 'linear-gradient(180deg, rgba(7,14,28,0.98), rgba(7,14,28,0.92) 80%, rgba(7,14,28,0))',
+        backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', gap: 14,
+      }}>
+        {avatar}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#E2E8F0', marginBottom: 6 }}>{label}</p>
+          {waveform}
+        </div>
+        {micBtn}
+      </div>
+
+      {/* Scrollable product area */}
+      <div style={{
+        flex: 1, overflowY: 'auto', padding: '8px 16px 32px',
+        display: 'flex', flexDirection: 'column', gap: 12,
+      }}>
+        {richComps.map((comp, i) => {
+          switch (comp.type) {
+            case 'carousel':
+              return <ProductCarousel key={i} data={comp} onSelect={onFrameSelect} onFitScore={onFitScore} />;
+            case 'face_analysis':
+              return <FaceAnalysisCard key={i} data={comp} />;
+            case 'lens_rec':
+              return <LensRecommendation key={i} data={comp} onSelectLens={onSelectLens} lang={lang} />;
+            case 'fit_score':
+              return <FitConfidenceWidget key={i} data={comp} />;
+            case 'fit_upload':
+              return <FitUploadPrompt key={i} data={comp} onUploaded={onFitPhotoUploaded} lang={lang} />;
+            default:
+              return null;
+          }
+        })}
+        {!supported && (
+          <p style={{ fontSize: 12, color: '#f87171', textAlign: 'center' }}>
+            {lang === 'hi' ? 'माइक इस ब्राउज़र में उपलब्ध नहीं।' : 'Mic not supported in this browser.'}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CONVERSATION STATUS PILL
+════════════════════════════════════════════════════════════ */
+function ConversationStatus({ lang }) {
+  const [speaking, setSpeaking] = useState(false);
+  useEffect(() => onSpeakingChange(setSpeaking), []);
+  const label = speaking
+    ? (lang === 'hi' ? '🔊 Claire बोल रही है…' : '🔊 Claire is speaking…')
+    : null;
+  if (!label) return null;
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'center', padding: '6px 12px',
+      background: 'transparent', pointerEvents: 'none',
+    }}>
+      <div style={{
+        padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+        background: 'rgba(0,195,195,0.12)', color: '#67E8F9',
+        border: '1px solid rgba(0,195,195,0.3)',
+        animation: 'glow 1.5s infinite',
+      }}>{label}</div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SVG FRAME SHAPES
+════════════════════════════════════════════════════════════ */
+function FrameSVG({ style = 'wayfarer', color = '#00C3C3', size = 200 }) {
+  const shapes = {
+    wayfarer: `<rect x="10" y="20" width="80" height="48" rx="11" fill="none" stroke="${color}" stroke-width="5"/>
+      <rect x="110" y="20" width="80" height="48" rx="11" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M90 42C93 35 107 35 110 42" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="30" x2="10" y2="30" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="190" y1="30" x2="200" y2="30" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`,
+
+    aviator: `<path d="M10 28Q50 8 90 38Q90 72 50 72Q10 68 10 28Z" fill="none" stroke="${color}" stroke-width="4.5"/>
+      <path d="M110 28Q150 8 190 28Q190 72 150 72Q110 68 110 28Z" fill="none" stroke="${color}" stroke-width="4.5"/>
+      <path d="M90 38Q100 30 110 38" fill="none" stroke="${color}" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="0" y1="30" x2="10" y2="30" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="200" y1="30" x2="190" y2="30" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`,
+
+    round: `<circle cx="55" cy="46" r="35" fill="none" stroke="${color}" stroke-width="5"/>
+      <circle cx="145" cy="46" r="35" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M90 41Q100 34 110 41" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="30" x2="20" y2="30" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="200" y1="30" x2="180" y2="30" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`,
+
+    'cat-eye': `<path d="M10 48Q14 16 90 22Q90 58 50 63Q10 62 10 48Z" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M110 48Q110 22 186 16Q196 22 190 52Q170 62 130 60Q110 56 110 48Z" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M90 28Q100 23 110 28" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="44" x2="10" y2="48" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="190" y1="22" x2="200" y2="18" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`,
+
+    rimless: `<ellipse cx="55" cy="46" rx="36" ry="26" fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="5 3"/>
+      <ellipse cx="145" cy="46" rx="36" ry="26" fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="5 3"/>
+      <path d="M91 42Q100 36 109 42" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round"/>
+      <line x1="0" y1="34" x2="19" y2="34" stroke="${color}" stroke-width="3" stroke-linecap="round"/>
+      <line x1="200" y1="34" x2="181" y2="34" stroke="${color}" stroke-width="3" stroke-linecap="round"/>`,
+
+    geometric: `<polygon points="14,52 28,16 72,16 86,52 72,74 28,74" fill="none" stroke="${color}" stroke-width="5"/>
+      <polygon points="114,52 128,16 172,16 186,52 172,74 128,74" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M86 36Q100 29 114 36" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="44" x2="14" y2="50" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="200" y1="44" x2="186" y2="50" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`,
+
+    square: `<rect x="10" y="18" width="80" height="54" rx="5" fill="none" stroke="${color}" stroke-width="5"/>
+      <rect x="110" y="18" width="80" height="54" rx="5" fill="none" stroke="${color}" stroke-width="5"/>
+      <line x1="90" y1="42" x2="110" y2="42" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="30" x2="10" y2="30" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="200" y1="30" x2="190" y2="30" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`,
+
+    sports: `<path d="M5 38Q5 14 55 14Q96 14 96 38Q96 66 55 70Q14 66 5 38Z" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M104 38Q104 14 145 14Q195 14 195 38Q195 66 154 70Q104 66 104 38Z" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M96 32Q100 26 104 32" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="34" x2="5" y2="38" stroke="${color}" stroke-width="5" stroke-linecap="round"/>
+      <line x1="200" y1="34" x2="195" y2="38" stroke="${color}" stroke-width="5" stroke-linecap="round"/>`,
+
+    clubmaster: `<path d="M10 32Q10 14 90 14L90 46Q90 64 50 64Q10 62 10 32Z" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M110 32Q110 14 190 14L190 46Q190 64 150 64Q110 62 110 46Z" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M90 25Q100 18 110 25" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="20" x2="10" y2="20" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="190" y1="20" x2="200" y2="20" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`,
+
+    oval: `<ellipse cx="55" cy="46" rx="42" ry="29" fill="none" stroke="${color}" stroke-width="5"/>
+      <ellipse cx="145" cy="46" rx="42" ry="29" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M97 40Q100 35 103 40" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="36" x2="13" y2="38" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="200" y1="36" x2="187" y2="38" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`,
+
+    butterfly: `<path d="M10 52Q10 14 55 14Q90 14 90 52Q90 74 65 74Q10 74 10 52Z" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M110 52Q110 14 145 14Q190 14 190 52Q190 74 145 74Q110 74 110 52Z" fill="none" stroke="${color}" stroke-width="5"/>
+      <path d="M90 32Q100 26 110 32" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="42" x2="10" y2="48" stroke="${color}" stroke-width="4" stroke-linecap="round"/>
+      <line x1="200" y1="42" x2="190" y2="48" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`,
+  };
+
+  const svgInner = shapes[style] || shapes.wayfarer;
+  return (
+    <svg viewBox="0 0 200 88" xmlns="http://www.w3.org/2000/svg"
+         style={{ width: size, height: size * 0.44 }}
+         dangerouslySetInnerHTML={{ __html: svgInner }}
+    />
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOADING DOTS
+════════════════════════════════════════════════════════════ */
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+           style={{ background: 'linear-gradient(135deg, #00C3C3, #7C3AED)' }}>
+        <span className="text-sm">✨</span>
+      </div>
+      <div className="glass rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
+        <div className="w-2 h-2 rounded-full bg-lk-teal dot1" />
+        <div className="w-2 h-2 rounded-full bg-lk-teal dot2" />
+        <div className="w-2 h-2 rounded-full bg-lk-teal dot3" />
+        <span className="text-xs text-slate-400 ml-2">Claire is thinking...</span>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   QUIZ TAG BADGE — renders a single extracted filter tag
+════════════════════════════════════════════════════════════ */
+const TAG_META = {
+  lifestyle:   { label: 'Lifestyle',   color: '#00C3C3', bg: 'rgba(0,195,195,.12)'   },
+  trend:       { label: 'Trend',       color: '#7C3AED', bg: 'rgba(124,58,237,.12)'  },
+  color:       { label: 'Color',       color: '#F59E0B', bg: 'rgba(245,158,11,.12)'  },
+  budget:      { label: 'Budget',      color: '#22C55E', bg: 'rgba(34,197,94,.12)'   },
+  price:       { label: 'Price',       color: '#22C55E', bg: 'rgba(34,197,94,.10)'   },
+  vision_need: { label: 'Vision',      color: '#FF6B35', bg: 'rgba(255,107,53,.12)'  },
+};
+
+function QuizTagBadge({ category, value }) {
+  if (!value) return null;
+  const meta = TAG_META[category] || { label: category, color: '#94A3B8', bg: 'rgba(148,163,184,.12)' };
+  const display = value.replace(/_/g, ' ');
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold fade-up"
+      style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.color}33` }}>
+      <span style={{ opacity: 0.7, fontSize: '10px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        {meta.label}
+      </span>
+      <span style={{ color: '#fff' }}>{display}</span>
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   QUIZ COMPONENT  (AI-powered — Bedrock analysis + free text)
+════════════════════════════════════════════════════════════ */
+function QuizComponent({ data, onAnswer, disabled }) {
+  const [selected,    setSelected]    = useState(null);
+  const [freeText,    setFreeText]    = useState('');
+  const [analyzing,   setAnalyzing]   = useState(false);
+  const [tagResult,   setTagResult]   = useState(null);
+  const [showFree,    setShowFree]    = useState(false);
+  const progress = (data.step / data.total) * 100;
+
+  const submitAnswer = async (answer) => {
+    if (disabled || selected || analyzing) return;
+    setSelected(answer);
+    setAnalyzing(true);
+
+    // Call backend quiz-analyze endpoint (non-blocking — falls back gracefully)
+    let analysisResult = null;
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 5000);
+      const resp = await fetch('/api/quiz-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response: answer, context: data.question }),
+        signal: controller.signal,
+      });
+      clearTimeout(tid);
+      if (resp.ok) {
+        analysisResult = await resp.json();
+      }
+    } catch (_) {
+      // Bedrock unavailable — continue without tags
+    }
+
+    setTagResult(analysisResult);
+    setAnalyzing(false);
+
+    // Short pause to show tags, then fire the answer upstream
+    setTimeout(() => onAnswer(answer, data.key, data.step, analysisResult, data), analysisResult ? 900 : 320);
+  };
+
+  const handleOptionClick = (opt) => { if (!disabled && !selected) submitAnswer(opt); };
+  const handleFreeSubmit  = () => { const v = freeText.trim(); if (v) submitAnswer(v); };
+  const handleKeyDown     = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleFreeSubmit(); } };
+
+  const tags = tagResult?.tags || {};
+  const hasAnyTag = Object.values(tags).some(Boolean);
+  const isHindi = tagResult && tagResult.detected_language !== 'en' && tagResult.detected_language;
+
+  // When the quiz is already answered (chat history), just show the question
+  // text — no progress bar, no option buttons. The user's bubble right below
+  // already carries their chosen answer.
+  if (disabled) {
+    return (
+      <div className="fade-up mt-1" style={{ maxWidth: 480 }}>
+        <p className="text-sm text-slate-300 leading-snug">{data.question}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fade-up mt-2" style={{ maxWidth: 480 }}>
+      {/* Progress bar */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-1 h-1.5 rounded-full" style={{ background: '#1A3050' }}>
+          <div className="h-full rounded-full transition-all duration-500"
+               style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #00C3C3, #7C3AED)' }} />
+        </div>
+        <span className="text-xs text-slate-400">{data.step}/{data.total}</span>
+      </div>
+
+      <p className="text-sm font-semibold text-white mb-3 leading-snug">{data.question}</p>
+
+      {/* Subtle hint — the chat input below or the mic picks up the answer. */}
+      {!selected && !disabled && !analyzing && (
+        <p className="text-xs text-slate-500 italic">
+          💬 Reply in the chat below — by voice 🎤 or by typing.
+        </p>
+      )}
+
+      {/* AI Analysis row — shown while processing */}
+      {analyzing && (
+        <div className="flex items-center gap-2 mt-3 fade-up">
+          <div className="w-4 h-4 rounded-full border-2 spin" style={{ borderColor: '#00C3C3', borderTopColor: 'transparent' }} />
+          <span className="text-xs" style={{ color: '#00C3C3' }}>Analysing with AI…</span>
+        </div>
+      )}
+
+      {/* Tag results strip */}
+      {tagResult && !analyzing && (
+        <div className="mt-3 fade-up">
+          {isHindi && (
+            <div className="flex items-start gap-1.5 mb-2 text-xs text-slate-400">
+              <span style={{ color: '#F59E0B' }}>🌐</span>
+              <span>
+                <span style={{ color: '#F59E0B', fontWeight: 600 }}>{tagResult.language_name}</span> detected
+                {tagResult.english_translation && tagResult.english_translation !== tagResult.original_response
+                  ? <> &mdash; <em style={{ color: '#94A3B8' }}>"{tagResult.english_translation}"</em></>
+                  : null}
+              </span>
+            </div>
+          )}
+          {hasAnyTag && (
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(tags).map(([cat, val]) =>
+                val ? <QuizTagBadge key={cat} category={cat} value={val} /> : null
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FACE ANALYSIS CARD
+════════════════════════════════════════════════════════════ */
+function FaceAnalysisCard({ data }) {
+  const emoji = FACE_EMOJI[data.shape] || '👤';
+  return (
+    <div className="fade-up rounded-2xl overflow-hidden" style={{ background: '#0D1B2E', border: '1px solid rgba(0,195,195,.2)', maxWidth: 460 }}>
+      {/* Header */}
+      <div className="px-4 py-3 flex items-center gap-3"
+           style={{ background: 'linear-gradient(135deg, rgba(0,195,195,.15), rgba(124,58,237,.12))' }}>
+        <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
+             style={{ background: 'rgba(0,195,195,.15)', border: '2px solid rgba(0,195,195,.3)' }}>
+          {emoji}
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-white text-base">{data.shape} Face Shape</span>
+            {data.confidence && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                    style={{ background: 'rgba(0,195,195,.2)', color: '#00C3C3' }}>
+                {data.confidence}% match
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-400 mt-0.5">{data.key_feature}</p>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <p className="text-sm text-slate-300 mb-3 leading-relaxed">{data.description}</p>
+
+        {data.face_width && (
+          <div className="flex gap-4 mb-3">
+            <div className="text-xs">
+              <span className="text-slate-500">Face width</span>
+              <p className="text-white font-medium mt-0.5">{data.face_width}</p>
+            </div>
+            {data.celebrity_match && (
+              <div className="text-xs">
+                <span className="text-slate-500">Similar to</span>
+                <p className="text-white font-medium mt-0.5">{data.celebrity_match}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {data.recommended_styles && data.recommended_styles.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 mb-1.5">Best frame styles for you:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {data.recommended_styles.map((s) => (
+                <span key={s} className="text-xs px-2.5 py-1 rounded-full capitalize"
+                      style={{ background: 'rgba(0,195,195,.12)', color: '#00C3C3', border: '1px solid rgba(0,195,195,.2)' }}>
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FIT CONFIDENCE WIDGET
+════════════════════════════════════════════════════════════ */
+// ── Lightweight photo-upload prompt for on-demand fit score ──────────
+// Unlike the Upload Selfie flow, this just grabs a photo and runs fit
+// score for a SPECIFIC frame. The ongoing session (quiz answers, cart,
+// filters) is untouched — we don't start any mini-quiz.
+function FitUploadPrompt({ data, onUploaded, lang = 'en' }) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  const handleFile = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => onUploaded(reader.result, data.frame);
+    reader.readAsDataURL(f);
+  };
+
+  return (
+    <div className="fade-up rounded-2xl p-4"
+         style={{ background: '#0D1B2E', border: '1px dashed rgba(0,195,195,.35)', maxWidth: 460 }}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="text-2xl">📸</div>
+        <div>
+          <p className="text-sm font-semibold text-white">
+            {lang === 'hi' ? 'एक photo अपलोड करें' : 'Upload a quick photo'}
+          </p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {lang === 'hi'
+              ? 'आपके चेहरे पर frame कैसा लगेगा और साइज़ सही है या नहीं — तुरंत पता चलेगा।'
+              : "I'll tell you how this frame looks on your face and whether the size is right."}
+          </p>
+        </div>
+      </div>
+      <input ref={fileRef} type="file" accept="image/*" capture="user"
+             style={{ display: 'none' }} onChange={handleFile} />
+      <button onClick={() => fileRef.current?.click()} disabled={uploading}
+              className="w-full px-4 py-2.5 rounded-xl font-semibold btn-teal text-sm disabled:opacity-50">
+        {uploading
+          ? (lang === 'hi' ? 'भेज रही हूँ…' : 'Uploading…')
+          : (lang === 'hi' ? '📷 photo चुनें / लें' : '📷 Choose or take a photo')}
+      </button>
+      <p className="text-xs text-slate-500 mt-2 text-center">
+        {lang === 'hi' ? 'Session वही रहेगा — कोई नई quiz नहीं।'
+                        : 'Your current session is kept — no new quiz will start.'}
+      </p>
+    </div>
+  );
+}
+
+function FitConfidenceWidget({ data }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
+
+  const score = data.score || 0;
+  const radius = 45;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+
+  const color = score >= 85 ? '#00C3C3' : score >= 70 ? '#F59E0B' : '#6B7280';
+  const verdict = data.verdict || (score >= 85 ? 'Perfect Match' : score >= 70 ? 'Great Fit' : 'Good Fit');
+
+  return (
+    <div className="fade-up rounded-2xl p-4" style={{ background: '#0D1B2E', border: '1px solid rgba(0,195,195,.2)', maxWidth: 460 }}>
+      <p className="text-sm font-semibold text-slate-300 mb-3">🎯 Fit Analysis — {data.frame_name}</p>
+      <div className="flex items-center gap-4">
+        {/* Score ring */}
+        <div className="relative flex-shrink-0">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r={radius} fill="none" stroke="#1A3050" strokeWidth="8" />
+            <circle cx="50" cy="50" r={radius} fill="none"
+                    stroke={color} strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={visible ? offset : circumference}
+                    transform="rotate(-90 50 50)"
+                    className="score-arc"
+                    style={{ '--dash-offset': offset, transition: 'stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)' }} />
+            <text x="50" y="46" textAnchor="middle" fontSize="18" fontWeight="700" fill={color}>{score}</text>
+            <text x="50" y="60" textAnchor="middle" fontSize="10" fill="#94A3B8">/ 100</text>
+          </svg>
+        </div>
+        {/* Reasons */}
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="text-sm font-bold" style={{ color }}>{verdict}</span>
+            {data.size_match && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                    style={{
+                      background: String(data.size_match).toLowerCase().includes('just')
+                        ? 'rgba(0,195,195,0.15)'
+                        : 'rgba(245,158,11,0.15)',
+                      color: String(data.size_match).toLowerCase().includes('just')
+                        ? '#00C3C3' : '#F59E0B',
+                      border: '1px solid rgba(0,195,195,0.2)',
+                    }}>
+                📏 {data.size_match}
+              </span>
+            )}
+          </div>
+          {data.reasons && data.reasons.slice(0, 3).map((r, i) => (
+            <div key={i} className="flex items-start gap-1.5 mb-1">
+              <span className="text-lk-teal text-xs mt-0.5">✓</span>
+              <p className="text-xs text-slate-300 leading-snug">{r}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LENS RECOMMENDATION
+════════════════════════════════════════════════════════════ */
+function LensRecommendation({ data, onSelectLens, lang = 'en' }) {
+  const [selected,  setSelected]  = useState(null);
+  const [confirmed, setConfirmed] = useState(null);
+  const packages = data.packages || [];
+
+  const chooseLens = (pkg) => {
+    setConfirmed(pkg.id);
+    if (onSelectLens) onSelectLens(pkg);
+  };
+
+  return (
+    <div className="fade-up" style={{ maxWidth: 500 }}>
+      {data.reasoning && data.reasoning.length > 0 && (
+        <div className="mb-3 p-3 rounded-xl" style={{ background: 'rgba(0,195,195,.07)', border: '1px solid rgba(0,195,195,.15)' }}>
+          {data.reasoning.map((r, i) => (
+            <p key={i} className="text-xs text-slate-300 leading-relaxed">{r}</p>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {packages.map((pkg, i) => {
+          const isSelected = selected === pkg.id;
+          return (
+            <div key={pkg.id} onClick={() => setSelected(isSelected ? null : pkg.id)}
+                 className="rounded-xl cursor-pointer transition-all duration-200"
+                 style={{
+                   background: isSelected ? 'rgba(0,195,195,.1)' : '#0D1B2E',
+                   border: `1.5px solid ${isSelected ? '#00C3C3' : 'rgba(0,195,195,.15)'}`,
+                   padding: '12px 14px'
+                 }}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-semibold text-sm text-white">{pkg.name}</span>
+                    {pkg.badge && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                            style={{ background: 'rgba(245,158,11,.2)', color: '#F59E0B' }}>
+                        {pkg.badge}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 mb-1.5">{pkg.tagline}</p>
+                  {isSelected && (
+                    <div className="fade-up">
+                      <p className="text-xs text-slate-300 mb-2">{pkg.description}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {pkg.features.map((f) => (
+                          <span key={f} className="text-xs px-2 py-0.5 rounded-full"
+                                style={{ background: 'rgba(0,195,195,.1)', color: '#67E8F9' }}>
+                            ✓ {f}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="font-bold text-lk-teal text-sm">₹{pkg.price.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-slate-500 line-through">₹{pkg.original_price.toLocaleString('en-IN')}</p>
+                  <button className="mt-1.5 text-xs px-3 py-1 rounded-full btn-teal disabled:opacity-50"
+                          disabled={confirmed === pkg.id}
+                          onClick={(e) => { e.stopPropagation(); chooseLens(pkg); }}>
+                    {confirmed === pkg.id
+                      ? (lang === 'hi' ? '✓ जोड़ा' : '✓ Added')
+                      : (lang === 'hi' ? 'चुनें'  : 'Select')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PRODUCT CAROUSEL
+════════════════════════════════════════════════════════════ */
+// ── Polished product-shot renderer ─────────────────────────────────────
+// We render the product in-browser as a high-quality SVG scene instead of
+// relying on an external CDN. This guarantees the image always matches the
+// product's type, shape, and colour (no risk of a sunglass photo landing
+// on an eyeglass card, or a random perfume bottle appearing).
+//
+// The scene consists of:
+//   - gradient studio backdrop
+//   - soft "table" shadow under the frame
+//   - the frame outline in the product's actual colour_hex
+//   - tinted lenses for sunglasses / clear for eyeglasses / full lens for contacts
+function ProductShot({ frame, width = 260, height = 160 }) {
+  const type    = (frame.type || 'eyeglasses').toLowerCase();
+  const shape   = (frame.frame_shape || frame.style || 'wayfarer').toLowerCase();
+  const color   = frame.color_hex || '#1a1a1a';
+  const colorName = (frame.color || '').toLowerCase();
+
+  // Slight warm/cool background tint hinting at the colour family
+  const bg = /black|dark|matte|glossy|gunmetal/.test(colorName)   ? ['#2a3449','#1a2438']
+           : /gold|amber|tortoise|brown|warm/.test(colorName)     ? ['#3d2f1f','#1a1208']
+           : /blue|navy|teal|cool/.test(colorName)                ? ['#1a2840','#0d1a30']
+           : /silver|grey|gray|white|clear|transparent/.test(colorName) ? ['#35445d','#1c2538']
+           : /red|maroon|pink/.test(colorName)                    ? ['#3b1f25','#1a0d10']
+           : /green/.test(colorName)                              ? ['#1e3524','#0d1d12']
+           : ['#212b40','#131a2c'];
+
+  // Lens tint varies by product type
+  const lensFill = type === 'sunglasses'
+    ? (colorName.includes('gold') || colorName.includes('brown') ? 'rgba(120,70,25,0.55)'
+       : colorName.includes('blue') ? 'rgba(30,90,160,0.55)'
+       : colorName.includes('green') ? 'rgba(50,110,60,0.55)'
+       : 'rgba(40,40,50,0.70)')
+    : type === 'contact_lens' ? 'rgba(170,210,240,0.45)'
+    : 'rgba(235,245,255,0.14)'; // eyeglasses — barely tinted
+
+  // Shape-specific paths (viewBox 240x120)
+  const lineW = 6;
+  const inner = {
+    wayfarer: (
+      <g>
+        <rect x="20"  y="38" width="84" height="54" rx="10" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <rect x="136" y="38" width="84" height="54" rx="10" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M104 52 Q120 46 136 52" stroke={color} strokeWidth={lineW-1} fill="none" strokeLinecap="round" />
+        <line x1="0"   y1="50" x2="20"  y2="50" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+        <line x1="220" y1="50" x2="240" y2="50" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+      </g>
+    ),
+    square: (
+      <g>
+        <rect x="20"  y="38" width="84" height="56" rx="4" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <rect x="136" y="38" width="84" height="56" rx="4" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M104 56 L136 56" stroke={color} strokeWidth={lineW-1} />
+        <line x1="0" y1="52" x2="20" y2="52" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+        <line x1="220" y1="52" x2="240" y2="52" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+      </g>
+    ),
+    rectangular: (
+      <g>
+        <rect x="16"  y="42" width="92" height="48" rx="6" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <rect x="132" y="42" width="92" height="48" rx="6" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M108 58 L132 58" stroke={color} strokeWidth={lineW-1} />
+        <line x1="0" y1="54" x2="16" y2="54" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+        <line x1="224" y1="54" x2="240" y2="54" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+      </g>
+    ),
+    aviator: (
+      <g>
+        <path d="M20 48 Q62 22 104 52 Q108 92 62 94 Q22 90 20 48 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M136 48 Q178 22 220 48 Q222 92 178 94 Q138 90 136 48 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M104 52 Q120 46 136 52" stroke={color} strokeWidth={lineW-1} fill="none" strokeLinecap="round" />
+        <line x1="0" y1="48" x2="20" y2="48" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+        <line x1="220" y1="48" x2="240" y2="48" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+      </g>
+    ),
+    round: (
+      <g>
+        <circle cx="62"  cy="62" r="32" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <circle cx="178" cy="62" r="32" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M94 62 L146 62" stroke={color} strokeWidth={lineW-1} />
+        <line x1="0" y1="58" x2="30" y2="58" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+        <line x1="210" y1="58" x2="240" y2="58" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+      </g>
+    ),
+    oval: (
+      <g>
+        <ellipse cx="62"  cy="62" rx="38" ry="28" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <ellipse cx="178" cy="62" rx="38" ry="28" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M100 62 L140 62" stroke={color} strokeWidth={lineW-1} />
+        <line x1="0" y1="58" x2="24" y2="58" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+        <line x1="216" y1="58" x2="240" y2="58" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+      </g>
+    ),
+    'cat-eye': (
+      <g>
+        <path d="M18 50 Q30 30 100 34 Q112 60 96 82 Q30 88 18 62 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M140 34 Q210 30 222 50 Q222 62 210 82 Q148 88 132 60 Q128 42 140 34 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M100 54 Q118 50 136 54" stroke={color} strokeWidth={lineW-1} fill="none" strokeLinecap="round" />
+        <line x1="0" y1="50" x2="18" y2="50" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+        <line x1="222" y1="50" x2="240" y2="50" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+      </g>
+    ),
+    clubmaster: (
+      <g>
+        <path d="M20 48 L104 48 Q104 90 62 92 Q22 88 20 48 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M136 48 L220 48 Q222 88 178 92 Q138 90 136 48 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <rect x="18" y="38" width="88" height="10" rx="3" fill={color} />
+        <rect x="134" y="38" width="88" height="10" rx="3" fill={color} />
+        <path d="M104 58 Q120 52 136 58" stroke={color} strokeWidth={lineW-1} fill="none" strokeLinecap="round" />
+      </g>
+    ),
+    rimless: (
+      <g>
+        <rect x="22" y="42" width="80" height="46" rx="4" fill={lensFill} stroke="none" />
+        <rect x="138" y="42" width="80" height="46" rx="4" fill={lensFill} stroke="none" />
+        <path d="M102 58 L138 58" stroke={color} strokeWidth={lineW-1} />
+        <line x1="0" y1="58" x2="22" y2="58" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+        <line x1="218" y1="58" x2="240" y2="58" stroke={color} strokeWidth={lineW-1} strokeLinecap="round" />
+      </g>
+    ),
+    butterfly: (
+      <g>
+        <path d="M20 44 Q60 26 108 40 Q108 86 62 94 Q22 90 18 60 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M132 40 Q180 26 222 44 Q224 90 178 94 Q138 86 132 60 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M108 56 Q120 50 132 56" stroke={color} strokeWidth={lineW-1} fill="none" strokeLinecap="round" />
+      </g>
+    ),
+    geometric: (
+      <g>
+        <polygon points="20,48 104,38 108,90 24,94" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <polygon points="136,38 220,48 216,94 132,90" fill={lensFill} stroke={color} strokeWidth={lineW} />
+        <path d="M108 58 L132 58" stroke={color} strokeWidth={lineW-1} />
+      </g>
+    ),
+    shield: (
+      <g>
+        <path d="M16 48 L224 48 Q228 94 120 96 Q12 94 16 48 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+      </g>
+    ),
+    'wrap-around': (
+      <g>
+        <path d="M12 48 Q120 28 228 48 Q230 88 120 94 Q10 88 12 48 Z" fill={lensFill} stroke={color} strokeWidth={lineW} />
+      </g>
+    ),
+  };
+
+  // Contact-lens: circular lens hovering on a fingertip suggestion
+  const contactScene = (
+    <g>
+      <ellipse cx="120" cy="102" rx="60" ry="8" fill="rgba(0,0,0,0.35)" />
+      <circle cx="120" cy="62" r="38" fill={lensFill} stroke={color} strokeWidth="2" />
+      <circle cx="120" cy="62" r="20" fill="rgba(0,0,0,0)" stroke={color} strokeWidth="1.5" opacity="0.6" />
+      <circle cx="110" cy="52" r="6" fill="rgba(255,255,255,0.5)" />
+    </g>
+  );
+
+  const shapeEl = type === 'contact_lens' ? contactScene
+                 : (inner[shape] || inner.wayfarer);
+
+  const bgId = `bg-${(frame.id || 'x').replace(/[^a-z0-9]/gi,'')}`;
+  const shId = `sh-${(frame.id || 'x').replace(/[^a-z0-9]/gi,'')}`;
+
+  return (
+    <svg viewBox="0 0 240 140" width={width} height={height}
+         style={{ display:'block' }}>
+      <defs>
+        <linearGradient id={bgId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor={bg[0]} />
+          <stop offset="100%" stopColor={bg[1]} />
+        </linearGradient>
+        <radialGradient id={shId} cx="0.5" cy="1" r="0.6">
+          <stop offset="0%"   stopColor="rgba(0,0,0,0.35)" />
+          <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+        </radialGradient>
+      </defs>
+      <rect x="0" y="0" width="240" height="140" fill={`url(#${bgId})`} />
+      <ellipse cx="120" cy="118" rx="90" ry="10" fill={`url(#${shId})`} />
+      {shapeEl}
+    </svg>
+  );
+}
+
+function FrameCard({ frame, onSelect, onFitScore }) {
+  const discount = Math.round((1 - frame.price / frame.original_price) * 100);
+  const styleKey  = frame.style || 'wayfarer';
+
+  const colorMap = {
+    '#1a1a1a': '#00C3C3', '#c9a84c': '#F59E0B', '#8B4513': '#B8860B',
+    '#0d0d0d': '#00C3C3', '#C0C0C0': '#94A3B8', '#B76E79': '#FF6B35',
+    '#1e3a5f': '#60A5FA', '#d4eaf7': '#7DD3FC', '#6a0dad': '#A78BFA',
+    '#2c3e50': '#94A3B8', '#b8860b': '#F59E0B', 'default': '#00C3C3'
+  };
+  const svgColor = colorMap[frame.color_hex] || colorMap['default'];
+
+  // Prefer a real product image (the Lenskart catalog's static image_link)
+  // and gracefully fall back to the locally-rendered SVG ProductShot when
+  // the image fails to load or no URL is present (e.g. offline demo data).
+  const realImage = (frame.image_urls && frame.image_urls[0]) || frame.image_url || null;
+  const [imgFailed, setImgFailed] = React.useState(false);
+  const showRealImage = realImage && !imgFailed && /^https?:\/\//.test(realImage);
+
+  return (
+    <div className="snap-start frame-card rounded-2xl overflow-hidden flex-shrink-0"
+         style={{ width: 178, background: '#0D1B2E', border: '1px solid rgba(0,195,195,.15)' }}>
+
+      {/* Image area — real catalog image when available, SVG product-shot
+          fallback otherwise. */}
+      <div className="relative overflow-hidden"
+           style={{ height: 140, background: '#0D1B2E' }}>
+        {showRealImage ? (
+          <img src={realImage} alt={frame.name}
+               onError={() => setImgFailed(true)}
+               style={{ width: '100%', height: '100%', objectFit: 'contain',
+                        background: '#fff' }} />
+        ) : (
+          <ProductShot frame={frame} width={178} height={140} />
+        )}
+        {frame.bestseller && (
+          <span className="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-semibold"
+                style={{ background: 'rgba(245,158,11,.25)', color: '#F59E0B' }}>
+            ⭐ Bestseller
+          </span>
+        )}
+        {frame.new_arrival && (
+          <span className="absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full font-semibold"
+                style={{ background: 'rgba(124,58,237,.25)', color: '#A78BFA' }}>
+            New
+          </span>
+        )}
+        {discount > 0 && (
+          <span className="absolute bottom-2 right-2 text-xs px-1.5 py-0.5 rounded-full font-bold"
+                style={{ background: 'rgba(255,107,53,.25)', color: '#FF6B35' }}>
+            -{discount}%
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3">
+        <p className="text-xs text-slate-400 mb-0.5">{frame.brand}</p>
+        <p className="text-sm font-semibold text-white leading-snug mb-1.5 truncate">{frame.name}</p>
+
+        {/* Rating */}
+        <div className="flex items-center gap-1 mb-2">
+          <span className="text-yellow-400 text-xs">★</span>
+          <span className="text-xs text-slate-300">{frame.rating}</span>
+          <span className="text-xs text-slate-500">({(frame.reviews / 1000).toFixed(1)}k)</span>
+        </div>
+
+        {/* Price */}
+        <div className="flex items-baseline gap-1.5 mb-3">
+          <span className="font-bold text-lk-teal">₹{frame.price.toLocaleString('en-IN')}</span>
+          <span className="text-xs text-slate-500 line-through">₹{frame.original_price.toLocaleString('en-IN')}</span>
+        </div>
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-1 mb-3">
+          {(frame.tags || []).slice(0, 2).map((tag) => (
+            <span key={tag} className="text-xs px-1.5 py-0.5 rounded capitalize"
+                  style={{ background: 'rgba(0,195,195,.08)', color: '#67E8F9' }}>
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-1.5">
+          <button className="flex-1 text-xs py-2 rounded-lg btn-teal" onClick={() => onSelect(frame)}>
+            Add to Cart
+          </button>
+          <button className="text-xs py-2 px-2 rounded-lg btn-ghost" onClick={() => onFitScore(frame)}
+                  title="Get fit score">
+            🎯
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductCarousel({ data, onSelect, onFitScore }) {
+  const scrollRef = useRef(null);
+  const [canLeft, setCanLeft]   = useState(false);
+  const [canRight, setCanRight] = useState(true);
+  const frames = data.frames || [];
+
+  const scroll = (dir) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * 190, behavior: 'smooth' });
+  };
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 8);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) { el.addEventListener('scroll', onScroll); onScroll(); }
+    return () => el?.removeEventListener('scroll', onScroll);
+  }, []);
+
+  if (!frames.length) return null;
+
+  return (
+    <div className="fade-up" style={{ maxWidth: 600 }}>
+      {data.title && (
+        <p className="text-sm font-semibold text-slate-300 mb-2.5">{data.title}</p>
+      )}
+      <div className="relative">
+        {canLeft && (
+          <button onClick={() => scroll(-1)}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm"
+                  style={{ background: '#0D1B2E', border: '1px solid rgba(0,195,195,.3)', boxShadow: '0 2px 12px rgba(0,0,0,.4)' }}>
+            ‹
+          </button>
+        )}
+        <div ref={scrollRef} className="carousel-scroll flex gap-3 pb-2">
+          {frames.map((frame) => (
+            <FrameCard key={frame.id} frame={frame}
+                       onSelect={onSelect} onFitScore={onFitScore} />
+          ))}
+        </div>
+        {canRight && (
+          <button onClick={() => scroll(1)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm"
+                  style={{ background: '#0D1B2E', border: '1px solid rgba(0,195,195,.3)', boxShadow: '0 2px 12px rgba(0,0,0,.4)' }}>
+            ›
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-slate-500 mt-1.5">Swipe or use arrows to browse • 🎯 for fit analysis</p>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FILTERABLE CAROUSEL — carousel + live filter chips
+════════════════════════════════════════════════════════════ */
+function FilterableCarousel({ data, onSelect, onFitScore }) {
+  const [frames, setFrames]           = useState(data.frames || []);
+  const [activePrice, setActivePrice] = useState(null);
+  const [activeType, setActiveType]   = useState(null);
+  const [activeColor, setActiveColor] = useState(null);
+  const [searching, setSearching]     = useState(false);
+  const [noMatch, setNoMatch]         = useState(false);
+  const [matchCount, setMatchCount]   = useState(null);
+
+  const hasActive = activePrice || activeType || activeColor;
+
+  const runSearch = async (price, type, color) => {
+    // Reset to originals when all cleared
+    if (!price && !type && !color) {
+      setFrames(data.frames || []);
+      setNoMatch(false);
+      setMatchCount(null);
+      return;
+    }
+
+    setSearching(true);
+    setNoMatch(false);
+
+    const quizTags = {};
+    if (price) quizTags.budget = price;
+    if (color) quizTags.color_type = color;
+
+    const body = { quiz_tags: quizTags };
+    if (type) body.filters = { type };
+
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 3500);
+      const res  = await fetch(`${API}/api/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+      const result = await res.json();
+
+      if (result.no_match || !(result.products || result.frames || []).length) {
+        setNoMatch(true);
+        setFrames([]);
+        setMatchCount(0);
+      } else {
+        const raw = result.products || result.frames || [];
+        setFrames(raw.map(enrichProduct));
+        setMatchCount(result.total_found || raw.length);
+        setNoMatch(false);
+      }
+    } catch {
+      // Client-side fallback — search the broader CLIENT_FRAMES pool
+      const pool = (typeof CLIENT_FRAMES !== 'undefined' && CLIENT_FRAMES.length)
+        ? CLIENT_FRAMES : (data.frames || []);
+      let filtered = [...pool];
+      if (price) {
+        const chip = PRICE_CHIPS.find(c => c.tag === price);
+        if (chip?.max) filtered = filtered.filter(f => (f.price || 0) <= chip.max);
+        if (chip?.min) filtered = filtered.filter(f => (f.price || 0) >= chip.min);
+      }
+      if (color) {
+        const MAP = { dark:['black','navy','gunmetal','matte'], light:['clear','white','silver','rose','gold'], warm:['tortoise','brown','gold','amber'], cool:['blue','silver','grey','teal'] };
+        const cols = MAP[color] || [];
+        if (cols.length) filtered = filtered.filter(f => cols.some(c => (f.color||'').toLowerCase().includes(c)));
+      }
+      if (type) filtered = filtered.filter(f => (f.type || 'eyeglasses') === type);
+      setFrames(filtered.slice(0, 6));
+      setNoMatch(filtered.length === 0);
+      setMatchCount(filtered.length);
+    }
+    setSearching(false);
+  };
+
+  const toggle = (category, value) => {
+    let p = activePrice, tp = activeType, co = activeColor;
+    if (category === 'price') p  = p  === value ? null : value;
+    if (category === 'type')  tp = tp === value ? null : value;
+    if (category === 'color') co = co === value ? null : value;
+    setActivePrice(p); setActiveType(tp); setActiveColor(co);
+    runSearch(p, tp, co);
+  };
+
+  const clearAll = () => {
+    setActivePrice(null); setActiveType(null); setActiveColor(null);
+    setFrames(data.frames || []); setNoMatch(false); setMatchCount(null);
+  };
+
+  const chip = (active, onClick, label) => (
+    <button onClick={onClick}
+      className="text-xs px-2.5 py-1 rounded-full transition-all whitespace-nowrap"
+      style={active
+        ? { background:'#00C3C3', color:'#fff', fontWeight:600, border:'1px solid #00C3C3' }
+        : { background:'rgba(255,255,255,0.06)', color:'#94A3B8', border:'1px solid rgba(255,255,255,0.1)' }
+      }>
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="fade-up" style={{ maxWidth: 600 }}>
+      {/* Title is rendered by ProductCarousel below — avoid duplicate */}
+
+      {/* ── Filter bar ── */}
+      <div className="mb-3 space-y-1.5">
+        {/* Price row */}
+        <div className="flex flex-wrap gap-1.5">
+          {PRICE_CHIPS.map(f => chip(activePrice === f.tag, () => toggle('price', f.tag), f.label))}
+        </div>
+        {/* Type + Color row */}
+        <div className="flex flex-wrap gap-1.5">
+          {TYPE_CHIPS.map(f  => chip(activeType  === f.value, () => toggle('type',  f.value), f.label))}
+          {COLOR_CHIPS.map(f => chip(activeColor === f.value, () => toggle('color', f.value), f.label))}
+        </div>
+        {/* Summary row */}
+        {hasActive && (
+          <div className="flex items-center gap-2 pt-0.5">
+            <span className="text-xs" style={{ color:'#00C3C3' }}>
+              {searching ? '🔍 Searching…' : noMatch ? '0 results' : `${matchCount ?? frames.length} results`}
+            </span>
+            <button onClick={clearAll} className="text-xs text-slate-500 hover:text-slate-300 underline">
+              Clear all
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Results ── */}
+      {searching ? (
+        <div className="flex gap-2 py-3">
+          {[0,1,2].map(i => (
+            <div key={i} className="rounded-xl flex-shrink-0" style={{ width:164, height:220, background:'rgba(255,255,255,0.04)', animation:'shimmer 1.2s infinite' }} />
+          ))}
+        </div>
+      ) : noMatch ? (
+        <div className="glass rounded-xl p-5 text-center" style={{ maxWidth:320 }}>
+          <p className="text-2xl mb-1.5">🔍</p>
+          <p className="text-sm font-semibold text-white mb-1">No products match these filters</p>
+          <p className="text-xs text-slate-400 mb-3">Try removing a filter or changing your selection</p>
+          <button onClick={clearAll}
+            className="text-xs px-3 py-1.5 rounded-full font-semibold"
+            style={{ background:'#00C3C3', color:'#fff' }}>
+            Reset filters
+          </button>
+        </div>
+      ) : (
+        <ProductCarousel data={{ ...data, frames }} onSelect={onSelect} onFitScore={onFitScore} />
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MESSAGE RENDERER
+════════════════════════════════════════════════════════════ */
+function MessageBubble({ msg, onAnswer, onFrameSelect, onFitScore, onFitPhotoUploaded, onSelectLens, lang = 'en' }) {
+  const isUser = msg.role === 'user';
+  const text   = msg.text || msg.content || '';
+  const comps  = msg.components || [];
+
+  // Format markdown-ish text (bold, italic)
+  function formatText(t) {
+    return t
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em class="text-lk-teal not-italic font-medium">$1</em>')
+      .replace(/\n/g, '<br/>');
+  }
+
+  if (isUser) {
+    if (msg.type === 'image') {
+      return (
+        <div className="flex justify-end msg-enter">
+          <div className="rounded-2xl rounded-br-sm overflow-hidden" style={{ maxWidth: 240, border: '2px solid rgba(0,195,195,.3)' }}>
+            <img src={msg.content} alt="Uploaded" className="w-full object-cover" style={{ maxHeight: 200 }} />
+            <div className="px-3 py-2 text-xs text-slate-400" style={{ background: '#0D1B2E' }}>
+              📸 Photo uploaded for face analysis
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="flex justify-end msg-enter">
+        <div className="rounded-2xl rounded-br-sm px-4 py-2.5 text-sm max-w-xs"
+             style={{ background: 'linear-gradient(135deg, #00C3C3, #005F5F)', color: '#fff' }}>
+          {text}
+        </div>
+      </div>
+    );
+  }
+
+  // Assistant message
+  return (
+    <div className="flex items-start gap-2.5 msg-enter">
+      {/* Avatar */}
+      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 pulse-glow"
+           style={{ background: 'linear-gradient(135deg, #00C3C3, #7C3AED)', fontSize: 16 }}>
+        ✨
+      </div>
+
+      <div className="flex-1 space-y-3" style={{ maxWidth: 'calc(100% - 44px)' }}>
+        {/* Text portion — hide if empty, or if the QuizComponent below will
+            already render the question (avoids duplicate copy in chat view). */}
+        {text && text.trim() && (() => {
+          const hasQuiz = (msg.components || []).some(c => c.type === 'quiz');
+          const textIsShortAck = text.trim().length < 60 && !/\?/.test(text);
+          // If a quiz is attached, only show text bubble when it's a short ack
+          if (hasQuiz && !textIsShortAck) return null;
+          return (
+            <div className="glass rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-slate-200 leading-relaxed relative group"
+                 style={{ display: 'inline-block', maxWidth: '100%' }}>
+              <div dangerouslySetInnerHTML={{ __html: formatText(text) }} />
+              <button onClick={() => {
+                        const q = (msg.components || []).find(c => c.type === 'quiz');
+                        speak(q ? q.question : text, lang);
+                      }}
+                      title={lang === 'hi' ? 'फिर से सुनें' : 'Replay'}
+                      className="ml-2 text-xs opacity-60 hover:opacity-100 transition-opacity"
+                      style={{ color: '#00C3C3' }}>
+                🔊
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Rich components */}
+        {comps.map((comp, i) => {
+          switch (comp.type) {
+            case 'quiz':
+              return <QuizComponent key={i} data={comp} onAnswer={onAnswer} disabled={msg.answered} />;
+            case 'carousel':
+              return <ProductCarousel key={i} data={comp} onSelect={onFrameSelect} onFitScore={onFitScore} />;
+            case 'face_analysis':
+              return <FaceAnalysisCard key={i} data={comp} />;
+            case 'lens_rec':
+              return <LensRecommendation key={i} data={comp} onSelectLens={onSelectLens} lang={lang} />;
+            case 'fit_score':
+              return <FitConfidenceWidget key={i} data={comp} />;
+            case 'fit_upload':
+              return <FitUploadPrompt key={i} data={comp} onUploaded={onFitPhotoUploaded} lang={lang} />;
+            default:
+              return null;
+          }
+        })}
+
+        {/* Timestamp */}
+        <p className="text-xs text-slate-600 pl-1">{msg.time}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PHOTO UPLOAD MODAL
+════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   LIVE RECOMMENDATION MODAL — webcam, 3s capture, LLM analysis
+════════════════════════════════════════════════════════════ */
+function LiveRecommendModal({ onCaptured, onClose, lang = 'en' }) {
+  const videoRef  = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const [status,   setStatus]   = useState('starting');  // starting|ready|capturing|error
+  const [countdown, setCountdown] = useState(3);
+  const [errMsg,   setErrMsg]   = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: 640, height: 480 },
+          audio: false,
+        });
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) videoRef.current.srcObject = stream;
+        setStatus('ready');
+      } catch (e) {
+        setStatus('error');
+        setErrMsg(lang === 'hi' ? 'कैमरा एक्सेस नहीं मिला' : 'Camera access denied');
+      }
+    })();
+    return () => {
+      cancelled = true;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, [lang]);
+
+  const capture = async () => {
+    setStatus('capturing');
+    // Friendly 3-2-1 countdown
+    for (let c = 3; c > 0; c--) {
+      setCountdown(c);
+      await new Promise(r => setTimeout(r, 700));
+    }
+    // Grab a frame from the video
+    const v = videoRef.current;
+    const c = canvasRef.current;
+    if (!v || !c) { setStatus('error'); return; }
+    c.width  = v.videoWidth  || 640;
+    c.height = v.videoHeight || 480;
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    const dataUri = c.toDataURL('image/jpeg', 0.85);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    onCaptured(dataUri);
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(7,14,28,0.94)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}>
+      <div className="glass rounded-2xl p-5 w-full"
+           style={{ maxWidth: 520, border: '1.5px solid rgba(0,195,195,0.35)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-base font-bold text-white">
+            {lang === 'hi' ? '🎥 लाइव रेकमेंडेशन' : '🎥 Live Recommendation'}
+          </p>
+          <button onClick={() => {
+                    streamRef.current?.getTracks().forEach((t) => t.stop());
+                    onClose();
+                  }}
+                  className="text-slate-400 hover:text-white" style={{ fontSize: 20 }}>
+            ✕
+          </button>
+        </div>
+
+        <div style={{
+          position: 'relative', width: '100%', aspectRatio: '4/3',
+          borderRadius: 12, overflow: 'hidden',
+          background: '#000', border: '1px solid rgba(0,195,195,0.25)',
+        }}>
+          <video ref={videoRef} autoPlay playsInline muted
+                 style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          {status === 'capturing' && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.35)',
+            }}>
+              <div style={{
+                width: 120, height: 120, borderRadius: '50%',
+                background: 'rgba(0,195,195,0.25)',
+                border: '3px solid #00C3C3',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 56, fontWeight: 700, color: '#fff',
+              }}>{countdown}</div>
+            </div>
+          )}
+          {status === 'error' && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#f87171', fontSize: 14, textAlign: 'center', padding: 24,
+            }}>
+              {errMsg}
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-400 mt-3 text-center">
+          {lang === 'hi'
+            ? 'कैमरे के सामने सीधे देखें, फिर Capture दबाएँ।'
+            : 'Look straight at the camera, then tap Capture.'}
+        </p>
+
+        <button onClick={capture}
+                disabled={status !== 'ready'}
+                className="w-full mt-3 py-3 rounded-xl font-semibold text-sm btn-teal disabled:opacity-40">
+          {status === 'starting' ? (lang === 'hi' ? 'कैमरा चालू हो रहा है…' : 'Starting camera…')
+           : status === 'capturing' ? (lang === 'hi' ? 'कैप्चर हो रहा है…' : 'Capturing…')
+           : (lang === 'hi' ? '📸 Capture & Analyse' : '📸 Capture & Analyse')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PhotoUploadModal({ onUpload, onClose }) {
+  const fileRef  = useRef(null);
+  const [drag, setDrag] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => setPreview(e.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDrag(false);
+    handleFile(e.dataTransfer.files[0]);
+  };
+
+  const confirm = () => {
+    if (!preview) return;
+    setLoading(true);
+    setTimeout(() => { onUpload(preview); onClose(); }, 300);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style={{ background: 'rgba(0,0,0,.75)', backdropFilter: 'blur(8px)' }}>
+      <div className="rounded-2xl w-full" style={{ maxWidth: 400, background: '#0D1B2E', border: '1px solid rgba(0,195,195,.25)' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(0,195,195,.1)' }}>
+          <div>
+            <h3 className="font-bold text-white">Face Shape Analysis</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Upload a clear selfie for personalized frame picks</p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
+        </div>
+
+        <div className="p-5">
+          {!preview ? (
+            <div className={`rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all duration-200 ${drag ? 'drag-active' : ''}`}
+                 style={{ border: '2px dashed rgba(0,195,195,.25)', background: 'rgba(0,195,195,.03)', padding: '40px 20px' }}
+                 onClick={() => fileRef.current?.click()}
+                 onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                 onDragLeave={() => setDrag(false)}
+                 onDrop={handleDrop}>
+              <div className="text-4xl">📸</div>
+              <div className="text-center">
+                <p className="font-semibold text-white text-sm">Drop your photo here</p>
+                <p className="text-xs text-slate-400 mt-1">or click to browse • JPG, PNG, WEBP</p>
+              </div>
+              <p className="text-xs text-slate-500 text-center">For best results: face the camera directly, ensure good lighting</p>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                     onChange={(e) => handleFile(e.target.files[0])} />
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="relative inline-block">
+                <img src={preview} alt="Preview" className="rounded-xl object-cover mx-auto"
+                     style={{ width: 200, height: 200 }} />
+                <button onClick={() => setPreview(null)}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-sm"
+                        style={{ background: 'rgba(0,0,0,.7)', color: '#fff' }}>
+                  ×
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 mt-2">Looking good! Claire will analyze your face shape.</p>
+            </div>
+          )}
+
+          {/* Tips */}
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {['😊 Face forward', '💡 Good lighting', '🤳 Clear background'].map((tip) => (
+              <div key={tip} className="text-center p-2 rounded-lg text-xs text-slate-400"
+                   style={{ background: 'rgba(0,195,195,.04)', border: '1px solid rgba(0,195,195,.08)' }}>
+                {tip}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-5 pb-5 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm btn-ghost">Cancel</button>
+          <button onClick={confirm} disabled={!preview || loading}
+                  className="flex-1 py-2.5 rounded-xl text-sm btn-teal disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            {loading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full spin" />Analyzing...</>
+                     : '✨ Analyze My Face'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CART MODAL
+════════════════════════════════════════════════════════════ */
+function CartModal({ cart, onClose, onRemove }) {
+  const total = cart.reduce((s, f) => s + f.price, 0);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+         style={{ background: 'rgba(0,0,0,.75)' }}>
+      <div className="rounded-2xl w-full" style={{ maxWidth: 420, background: '#0D1B2E', border: '1px solid rgba(0,195,195,.2)' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(0,195,195,.1)' }}>
+          <h3 className="font-bold text-white">🛒 Your Cart ({cart.length})</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-white text-xl">×</button>
+        </div>
+        <div className="px-5 py-3 space-y-2 max-h-64 overflow-y-auto">
+          {cart.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-6">Your cart is empty.<br/>Add some frames!</p>
+          ) : cart.map((f) => {
+            const img = (f.image_urls && f.image_urls[0]) || f.image_url || null;
+            const useImg = img && /^https?:\/\//.test(img);
+            return (
+            <div key={f.id} className="flex items-center gap-3 p-2.5 rounded-xl"
+                 style={{ background: 'rgba(0,195,195,.05)', border: '1px solid rgba(0,195,195,.1)' }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden"
+                   style={{ background: useImg ? '#fff' : '#070E1C' }}>
+                {useImg ? (
+                  <img src={img} alt={f.name}
+                       style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <FrameSVG style={f.style} color="#00C3C3" size={40} />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{f.name}</p>
+                <p className="text-xs text-slate-400">{f.color} • {f.material}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-lk-teal text-sm">₹{f.price.toLocaleString('en-IN')}</p>
+                <button onClick={() => onRemove(f.id)} className="text-xs text-slate-500 hover:text-red-400">remove</button>
+              </div>
+            </div>
+            );
+          })}
+        </div>
+        {cart.length > 0 && (
+          <div className="px-5 pb-5 pt-2">
+            <div className="flex justify-between mb-3 text-sm">
+              <span className="text-slate-400">Total</span>
+              <span className="font-bold text-white">₹{total.toLocaleString('en-IN')}</span>
+            </div>
+            <button
+              onClick={() => {
+                try { window.open('https://www.lenskart.com', '_blank', 'noopener'); } catch {}
+              }}
+              className="w-full py-3 rounded-xl btn-teal text-sm">
+              Continue to Lenskart.com →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR
+════════════════════════════════════════════════════════════ */
+function Sidebar({ faceData, cartCount, onCart, onNewChat, onUpload, onLive }) {
+  return (
+    <div className="hidden md:flex flex-col h-full"
+         style={{ width: 256, background: '#070E1C', borderRight: '1px solid rgba(0,195,195,.1)' }}>
+
+      {/* Logo */}
+      <div className="px-5 py-5" style={{ borderBottom: '1px solid rgba(0,195,195,.08)' }}>
+        <div className="flex items-center gap-2.5 mb-1">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+               style={{ background: 'linear-gradient(135deg, #00C3C3, #7C3AED)' }}>👓</div>
+          <div>
+            <p className="font-bold text-white text-sm">LENSKART</p>
+            <p className="text-xs gradient-text font-semibold">Claire AI</p>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 mt-2">Your personal eyewear stylist</p>
+      </div>
+
+      {/* Actions */}
+      <div className="px-4 py-3 space-y-1.5">
+        <button onClick={onNewChat}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm sidebar-item"
+                style={{ color: '#94A3B8' }}>
+          <span>💬</span> New Conversation
+        </button>
+        <button onClick={onUpload}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm sidebar-item"
+                style={{ color: '#94A3B8' }}>
+          <span>📸</span> Upload Selfie
+        </button>
+        <button onClick={onLive}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm sidebar-item"
+                style={{ color: '#94A3B8' }}>
+          <span>🎥</span> Live Recommendation
+        </button>
+        <button onClick={onCart}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm sidebar-item"
+                style={{ color: '#94A3B8' }}>
+          <span>🛒</span>
+          <span>Cart</span>
+          {cartCount > 0 && (
+            <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold"
+                  style={{ background: '#00C3C3', color: '#070E1C' }}>
+              {cartCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Face scan card */}
+      <div className="px-4 mt-2">
+        {faceData ? (
+          <div className="rounded-xl p-3" style={{ background: 'rgba(0,195,195,.08)', border: '1px solid rgba(0,195,195,.2)' }}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-base">{FACE_EMOJI[faceData.shape] || '👤'}</span>
+              <div>
+                <p className="text-xs font-semibold text-white">{faceData.shape} Face</p>
+                <p className="text-xs text-slate-400">Analyzed</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {(faceData.recommended_styles || []).slice(0, 3).map((s) => (
+                <span key={s} className="text-xs px-1.5 py-0.5 rounded capitalize"
+                      style={{ background: 'rgba(0,195,195,.12)', color: '#67E8F9' }}>
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <button onClick={onUpload}
+                  className="w-full rounded-xl p-3 text-center transition-all"
+                  style={{ background: 'rgba(0,195,195,.04)', border: '1px dashed rgba(0,195,195,.2)' }}>
+            <p className="text-2xl mb-1">🤳</p>
+            <p className="text-xs font-semibold text-slate-300">Analyze Your Face Shape</p>
+            <p className="text-xs text-slate-500 mt-0.5">For personalized picks</p>
+          </button>
+        )}
+      </div>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Footer */}
+      <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(0,195,195,.08)' }}>
+        <p className="text-xs text-slate-600 text-center">Powered by Claire AI</p>
+        <p className="text-xs text-slate-600 text-center mt-0.5">2026 Lenskart Solutions</p>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CHAT INPUT
+════════════════════════════════════════════════════════════ */
+function ChatInput({ onSend, onUpload, loading, lang = 'en', disabled = false, registerAutoMic }) {
+  const [text, setText] = useState('');
+  const taRef = useRef(null);
+  const { listening, transcript, supported: micSupported, start, stop } = useSpeechRecognition(lang);
+
+  const send = () => {
+    const t = text.trim();
+    if (!t || loading || disabled) return;
+    onSend(t);
+    setText('');
+    if (taRef.current) taRef.current.style.height = 'auto';
+  };
+
+  const onKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  };
+
+  const toggleMic = useCallback(() => {
+    if (listening) { stop(); return; }
+    // ChatInput doesn't know the pending quiz key — but capturing pitch is
+    // harmless. Enable it always; the backend ignores it for non-gender answers.
+    start((t, pitch) => { if (t) onSend(t, 'text', null, null, pitch); },
+          { capturePitch: true });
+  }, [listening, start, stop, onSend]);
+
+  useEffect(() => {
+    if (!registerAutoMic) return;
+    const trigger = () => {
+      if (disabled || loading || !micSupported) return;
+      if (!listening) start((t, pitch) => { if (t) onSend(t, 'text', null, null, pitch); },
+                            { capturePitch: true });
+    };
+    registerAutoMic(trigger);
+    return () => registerAutoMic(null);
+  }, [registerAutoMic, disabled, loading, micSupported, listening, start, onSend]);
+
+  const resize = (e) => {
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+  };
+
+  return (
+    <div className="px-3 py-3" style={{ borderTop: '1px solid rgba(0,195,195,.1)', background: '#070E1C' }}>
+      <div className="flex items-end gap-2 rounded-2xl px-3 py-2.5"
+           style={{ background: '#0D1B2E', border: '1.5px solid rgba(0,195,195,.2)' }}>
+
+        {/* Upload button */}
+        <button onClick={onUpload} disabled={loading || disabled}
+                title="Upload photo for face analysis"
+                className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
+                style={{ background: 'rgba(0,195,195,.1)', color: '#00C3C3' }}>
+          📷
+        </button>
+
+        {/* Mic button */}
+        {micSupported && (
+          <button onClick={toggleMic} disabled={loading || disabled}
+                  title={listening ? (I18N[lang]?.stopSpeaking || 'Stop') : (I18N[lang]?.speakLabel || 'Speak')}
+                  className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
+                  style={listening
+                    ? { background: '#ef4444', color: '#fff', animation: 'glow 1.2s infinite' }
+                    : { background: 'rgba(0,195,195,.1)', color: '#00C3C3' }}>
+            {listening ? '🛑' : '🎤'}
+          </button>
+        )}
+
+        {/* Textarea */}
+        <textarea ref={taRef} value={listening ? (transcript || '🎤 listening…') : text}
+                  onChange={(e) => { if (!listening) { setText(e.target.value); resize(e); } }}
+                  onKeyDown={onKey}
+                  placeholder={listening
+                    ? (lang === 'hi' ? 'बोलिए…' : 'Listening…')
+                    : (disabled
+                        ? 'Please choose a language above to begin…'
+                        : (lang === 'hi'
+                            ? 'Claire से कुछ भी पूछें — चेहरा, लेंस, फ्रेम…'
+                            : 'Ask Claire anything — your face shape, lens advice, frames…'))}
+                  rows={1}
+                  className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 resize-none outline-none leading-relaxed"
+                  style={{ minHeight: 28, maxHeight: 120 }}
+                  disabled={loading || disabled || listening} />
+
+        {/* Send button */}
+        <button onClick={send} disabled={!text.trim() || loading}
+                className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all btn-teal disabled:opacity-30">
+          {loading
+            ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full spin" />
+            : '▶'}
+        </button>
+      </div>
+
+      <p className="text-xs text-slate-600 mt-1.5 px-1">Press Enter to send · Shift+Enter for new line</p>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN APP
+════════════════════════════════════════════════════════════ */
+function App() {
+  const [messages, setMessages]     = useState([]);
+  const [loading, setLoading]       = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
+  const [showCart, setShowCart]     = useState(false);
+  const [showLive, setShowLive]     = useState(false);
+  const [faceData, setFaceData]     = useState(null);
+  const [cart, setCart]             = useState([]);
+  const [lang, setLang]             = useState(() => {
+    try { return sessionStorage.getItem('claire_lang') || null; } catch { return null; }
+  });
+  const [mode, setMode]             = useState(() => {
+    try { return sessionStorage.getItem('claire_mode') || 'hybrid'; } catch { return 'hybrid'; }
+  });
+  const [sessionData, setSessionData] = useState({
+    quiz_step: 0, quiz_answers: {}, face_data: null, last_shown: null
+  });
+
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  useEffect(() => { scrollToBottom(); }, [messages, loading]);
+
+  // Prime speechSynthesis voice list (some browsers load async)
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    const prime = () => window.speechSynthesis.getVoices();
+    prime();
+    window.speechSynthesis.addEventListener?.('voiceschanged', prime);
+    return () => window.speechSynthesis.removeEventListener?.('voiceschanged', prime);
+  }, []);
+
+  // ── Pick language + mode first ──
+  const pickLanguage = useCallback((l, m = 'hybrid') => {
+    setLang(l);
+    setMode(m);
+    try { sessionStorage.setItem('claire_lang', l); } catch {}
+    try { sessionStorage.setItem('claire_mode', m); } catch {}
+    try { window.speechSynthesis.resume(); } catch {}
+
+    // Speak a short agent introduction first. When it finishes, fire the
+    // greeting — this way the greeting's TTS doesn't cut off the intro.
+    const agentIntro = l === 'hi'
+      ? 'नमस्ते! मैं Claire हूँ, Lenskart की आपकी personal eyewear stylist। चलिए शुरू करते हैं।'
+      : "Hi! I'm Claire, your personal eyewear stylist at Lenskart. Let's get started.";
+
+    speak(agentIntro, l, () => {
+      // Greeting fires only after the intro audio has truly ended.
+      setTimeout(() => sendMessage('hello', 'greet', null, l), 200);
+    });
+  }, []);
+
+  // Greet is fired by pickLanguage; no separate auto-greet effect needed.
+
+  // ── Auto-speak new assistant messages + hands-free mic handoff ──
+  const _spokenRef = useRef(new Set());
+  const _autoMicRef = useRef(null); // set by ChatInput / VoiceOnlyView
+  const _handleQuizAnswerRef = useRef(null); // set after handleQuizAnswer is defined
+  useEffect(() => {
+    if (!lang) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant' || _spokenRef.current.has(last.id)) return;
+    _spokenRef.current.add(last.id);
+    const q = (last.components || []).find(c => c.type === 'quiz');
+
+    // Build the utterance — the question itself is now self-contained, so
+    // speak the question when available, otherwise the message text.
+    // This avoids the old bug of speaking intro + question twice.
+    let say;
+    if (q) {
+      // If assistant text is a short acknowledgement (e.g. "Got it."), prepend it;
+      // otherwise the question already contains everything needed.
+      const t = (last.text || '').trim();
+      const textIsShort = t.length > 0 && t.length < 60 && !/\?/.test(t);
+      say = textIsShort ? `${t} ${q.question}` : q.question;
+    } else {
+      say = last.text || '';
+    }
+    if (!say.trim()) return;
+
+    speak(say, lang, () => {
+      if (q && _autoMicRef.current) {
+        setTimeout(() => {
+          if (isSpeaking()) return;
+          _autoMicRef.current?.();
+        }, 350);
+      }
+    });
+  }, [messages, lang]);
+
+  // Short salesman-style acknowledgement to play before advancing
+  const speakAck = useCallback(() => {
+    if (!lang) return Promise.resolve();
+    const acks = lang === 'hi'
+      ? ["अच्छा, समझ गई!", "बिल्कुल सही!", "वाह!", "ठीक है!"]
+      : ["Got it!", "Perfect!", "Nice choice!", "Okay!"];
+    const pick = acks[Math.floor(Math.random() * acks.length)];
+    return speak(pick, lang);
+  }, [lang]);
+
+  const now = () => new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+  // ── Client-side demo responses (quiz flow, no backend needed) ──
+  const clientDemoReply = useCallback((text, type, sd) => {
+    const t = text.toLowerCase();
+    const step = sd.quiz_step || 0;
+    const L = I18N[lang] || I18N.en;  // active language pack
+
+    // ── Filter-query detection (client-side when backend is down) ──
+    if (type !== 'greet' && type !== 'quiz_answer') {
+      const quizBlob = Object.values(sd.quiz_answers || {}).join(' ');
+      const quizTags = quizBlob ? extractTagsFromText(quizBlob) : {};
+      const newTags  = extractTagsFromText(text);
+      const tags = { ...(sd.active_filters || {}) };
+      for (const [k, v] of Object.entries(quizTags)) { if (v != null && !tags[k]) tags[k] = v; }
+      for (const [k, v] of Object.entries(newTags))  { if (v != null) tags[k] = v; }
+      const hasTag = Object.values(tags).some(v => v != null);
+      if (hasTag) {
+        let filtered = [...CLIENT_FRAMES];
+        const hints = [];
+        if (tags.budget === 'under_500')       { filtered = filtered.filter(f => f.price <= 500);  hints.push('under ₹500'); }
+        else if (tags.budget === 'under_1000') { filtered = filtered.filter(f => f.price <= 1000); hints.push('under ₹1000'); }
+        else if (tags.budget === 'under_1500') { filtered = filtered.filter(f => f.price <= 1500); hints.push('under ₹1500'); }
+        else if (tags.budget === 'under_2000') { filtered = filtered.filter(f => f.price <= 2000); hints.push('under ₹2000'); }
+        else if (tags.budget === 'under_2500') { filtered = filtered.filter(f => f.price <= 2500); hints.push('under ₹2500'); }
+        else if (tags.budget === 'under_3000') { filtered = filtered.filter(f => f.price <= 3000); hints.push('under ₹3000'); }
+        else if (tags.budget === 'above_3000') { filtered = filtered.filter(f => f.price >= 3000); hints.push('premium'); }
+
+        if (tags.color_type === 'dark')  { filtered = filtered.filter(f => /black|navy|gunmetal|matte/i.test(f.color||'')); hints.push('dark'); }
+        if (tags.color_type === 'light') { filtered = filtered.filter(f => /clear|white|silver|rose|gold/i.test(f.color||'')); hints.push('light'); }
+
+        if (tags.product_type === 'sunglasses')   { filtered = filtered.filter(f => (f.type||'eyeglasses')==='sunglasses'); hints.push('sunglasses'); }
+        if (tags.product_type === 'contact_lens') { filtered = filtered.filter(f => f.type==='contact_lens'); hints.push('contacts'); }
+
+        if (!filtered.length) {
+          return { text: `🔍 No products found matching ${hints.join(' + ') || 'your criteria'}. Try different filters!`, components: [] };
+        }
+        const desc = hints.length ? hints.join(' + ') : 'your criteria';
+        return {
+          text: `🎯 Filters: **${desc}** — ${filtered.length} products:`,
+          components: [{ type:'carousel', title:'Search Results', frames: filtered.slice(0, 6) }]
+        };
+      }
+    }
+    const QUIZ_STEPS = L.quiz;
+
+    // Lens keywords
+    if (['lens','prescription','power','coating','anti-glare','blue light','screen'].some(k => t.includes(k))) {
+      const LENS_PKGS = [
+        { id:'LENS-BLU', name:'BluBlock Pro', tagline:'Shield Your Eyes from Digital Strain', price:699, original_price:1299, badge:'Most Popular', description:'Advanced blue-light blocking coating that reduces digital eye strain by up to 85%.', features:['Blue light blocking','Anti-glare','UV 400 protection','Scratch resistant'] },
+        { id:'LENS-SV',  name:'ClearVision Single', tagline:'Crystal-Clear Single Vision',  price:499, original_price:999,  badge:null, description:'Premium 1.56 index single vision lenses with anti-reflective coating.', features:['Anti-reflective','UV protection','Scratch resistant','Lightweight'] },
+        { id:'LENS-PROG',name:'Progressive Elite', tagline:'See All Distances, Seamlessly', price:2499, original_price:4999, badge:'Premium', description:'Premium progressive multifocal lenses with wide corridors for effortless vision.', features:['Wide corridors','No-line bifocal','Anti-reflective','UV 400'] },
+      ];
+      return { text:'Here are my top lens recommendations for you:', components:[{ type:'lens_rec', packages:LENS_PKGS, reasoning:['BluBlock is essential for 4+ hours of daily screen time.','ClearVision Single is the best value for mild prescriptions.'] }] };
+    }
+
+    // Fit score request
+    if (['fit','confidence','score','match','how well'].some(k => t.includes(k))) {
+      const shape = sd.face_data?.shape || 'Oval';
+      return { text:`Here's your fit analysis for the Horizon Classic based on your **${shape}** face shape:`, components:[{ type:'fit_score', frame_id:'LK-HC-001', frame_name:'Horizon Classic', score:shape==='Oval'?94:shape==='Round'?72:82, verdict:shape==='Oval'?'Perfect Match':'Great Fit', reasons:['Excellent shape compatibility for your face type','Frame width is proportionally balanced','Classic black colorway suits all skin tones'] }] };
+    }
+
+    // Show frames
+    if (['show','frame','recommend','browse','catalog','option'].some(k => t.includes(k)) || type === 'greet') {
+      const shape = sd.face_data?.shape;
+      const frames = clientSearchFrames(shape, 6);
+      if (type === 'greet') {
+        const q0 = QUIZ_STEPS[0];
+        return { text: L.intro,
+                 components:[{ type:'quiz', question: q0.q, options: q0.opts, step: 1, total: QUIZ_STEPS.length, key: q0.key }] };
+      }
+      const showText = lang === 'hi'
+        ? `ये रहे कुछ बढ़िया फ्रेम${shape ? ` आपके ${shape} चेहरे के लिए` : ''} — 🎯 पर टैप करके फिट स्कोर देखें!`
+        : `Here are some great frames${shape ? ` for your ${shape} face shape` : ''} — tap 🎯 on any card for your personal fit score!`;
+      const showTitle = lang === 'hi'
+        ? (shape ? `${shape} चेहरे के लिए बेस्ट` : 'आपके लिए टॉप पिक्स')
+        : (shape ? `Best frames for ${shape} face shape` : 'Top picks for you');
+      return { text: showText, components:[{ type:'carousel', title: showTitle, frames }] };
+    }
+
+    // Quiz answer — advance steps.
+    // `step` = number of questions already answered (1..7). Next question index = step.
+    const TOTAL = QUIZ_STEPS.length; // now 7
+    if (step < TOTAL) {
+      const s = QUIZ_STEPS[step]; // 0-indexed; step=1 → QUIZ_STEPS[1]
+      // Short ack per transition. Questions are self-contained, so these
+      // intros stay short to avoid repeating the question.
+      // Order transitions: gender→age→type→lifestyle→style→color→budget→vision
+      const intros = lang === 'hi'
+        ? ['समझ गई।', 'ठीक है।', 'बढ़िया।', 'अच्छा।', 'बहुत सही।', 'ओके।', 'आख़िरी बात।']
+        : ["Got it.", "Okay.", "Perfect.", "Lovely.", "Nice.", "Got it.", "Last one."];
+      return { text: intros[step - 1] || (lang === 'hi' ? 'एक और छोटा सवाल —' : "One quick thing —"),
+               components:[{ type:'quiz', question: s.q, options: s.opts, step: step+1, total: TOTAL, key: s.key }] };
+    }
+
+    // Quiz complete — show filtered frames based on saved answers
+    if (step >= TOTAL) {
+      const a = sd.quiz_answers || {};
+      let pool = [...CLIENT_FRAMES];
+      // Simple budget-aware filter from saved budget answer
+      const b = (a.budget || '').toLowerCase();
+      if (b.includes('1,000') || b.includes('under'))       pool = pool.filter(f => f.price <= 1000);
+      else if (b.includes('2,000'))                         pool = pool.filter(f => f.price <= 2000);
+      else if (b.includes('3,500'))                         pool = pool.filter(f => f.price <= 3500);
+      else if (b.includes('premium'))                       pool = pool.filter(f => f.price >= 3000);
+      if (!pool.length) pool = [...CLIENT_FRAMES];
+      const doneText  = lang === 'hi'
+        ? 'बस हो गया! आपके जवाबों के हिसाब से ये रहे बेस्ट फ्रेम:'
+        : "All done! Based on your answers, here are your best-fit frames:";
+      const doneTitle = lang === 'hi' ? 'आपके लिए चुने गए' : 'Curated just for you';
+      return { text: doneText, components:[{ type:'carousel', title: doneTitle, frames: pool.slice(0,6) }] };
+    }
+
+    // Fallback
+    const frames = clientSearchFrames(sd.face_data?.shape, 6);
+    const fallbackText = lang === 'hi'
+      ? 'मैं आपकी परफेक्ट फ्रेम ढूंढने में मदद कर सकती हूँ! एक selfie अपलोड करें या नीचे टॉप पिक्स देखें 👇'
+      : "I'd love to help you find perfect frames! Try uploading a selfie for face shape analysis, or browse our top picks below 👇";
+    return { text: fallbackText, components:[{ type:'carousel', title: lang === 'hi' ? 'आपके लिए टॉप पिक्स' : 'Top picks for you', frames }] };
+  }, [lang]);
+
+  // ── Post-results intent parser ──────────────────────────────────────
+  // When the customer can see a product carousel OR a lens-rec card,
+  // capture natural-language intents like "add the first", "सब जोड़ दो",
+  // "checkout", etc. and act locally. The MOST RECENT applicable component
+  // wins — so if the last bubble is a lens card, "add 2nd" selects the 2nd
+  // LENS (not re-adding a product from an older carousel).
+  const _handlePostResultsIntent = useCallback((text) => {
+    const t = (text || '').toLowerCase().trim();
+    if (!t) return false;
+
+    // Scan backwards and take the FIRST rich component we find (lens_rec or
+    // carousel) — that represents what the customer is currently looking at.
+    let frames = null;      // product list (if most recent is a carousel)
+    let lensPkgs = null;    // lens list    (if most recent is a lens_rec)
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role !== 'assistant') continue;
+      const lens = (m.components || []).find(c => c.type === 'lens_rec');
+      const car  = (m.components || []).find(c => c.type === 'carousel');
+      if (lens?.packages?.length) { lensPkgs = lens.packages; break; }
+      if (car?.frames?.length)    { frames   = car.frames;    break; }
+    }
+    if (!frames && !lensPkgs) return false;
+
+    // Helper: push a user-message bubble so the intent shows in the chat log
+    const echoUser = () => setMessages((prev) => [...prev, {
+      id: Date.now() + '-u', role: 'user', type: 'text',
+      content: text, text: text, time: now(),
+    }]);
+
+    // ── Checkout / continue to Lenskart ────────────────────────────
+    const CHECKOUT = ['checkout', 'check out', 'continue to lenskart', 'go to lenskart',
+                      'buy now', 'proceed', 'place order',
+                      'लेंसकार्ट', 'lenskart par', 'lenskart pe',
+                      'खरीद', 'order कर', 'चेकआउट'];
+    if (CHECKOUT.some(w => t.includes(w))) {
+      echoUser();
+      setMessages((prev) => [...prev, {
+        id: Date.now() + '-a', role: 'assistant',
+        text: lang === 'hi'
+          ? '🛒 Lenskart.com पर ले जा रही हूँ — नया tab खुलेगा।'
+          : '🛒 Taking you to Lenskart.com — opening in a new tab.',
+        components: [], time: now(),
+      }]);
+      try { window.open('https://www.lenskart.com', '_blank', 'noopener'); } catch {}
+      return true;
+    }
+
+    // ── Add ALL (products carousel only — not lenses) ─────────────
+    const ADD_ALL = ['add all', 'सब जोड़', 'sabh add', 'sab add', 'सब कार्ट'];
+    if (ADD_ALL.some(w => t.includes(w)) && frames) {
+      echoUser();
+      frames.forEach((f) => handleFrameSelect(f));
+      return true;
+    }
+
+    // ── Lens card active: match by NAME or "skip lens" ──────────
+    // When lenses are shown, most users answer naturally — "blue block pro
+    // kar do", "clear vision wala", "no lens chahiye", "skip coating".
+    // Treat the whole reply as a lens-intent so it doesn't leak through to
+    // the filter-keyword matcher on the backend (which would see "blue" and
+    // re-run a product search).
+    if (lensPkgs) {
+      // A) Skip / no lens → open cart with just the frame(s) already picked
+      const SKIP = [
+        'no lens', 'no coating', 'skip lens', 'skip coating', 'without lens',
+        'bina lens', 'lens nahi', 'lens mat', 'koi lens nahi',
+        'बिना लेंस', 'लेंस नहीं', 'लेंस मत',
+        'checkout without lens', 'no need for lens',
+      ];
+      if (SKIP.some(w => t.includes(w))) {
+        echoUser();
+        setMessages((prev) => [...prev, {
+          id: Date.now() + '-a', role: 'assistant',
+          text: lang === 'hi'
+            ? '👍 ठीक है, बिना lens के आगे बढ़ते हैं। Cart खोल रही हूँ।'
+            : '👍 Got it — skipping the lens package. Opening your cart.',
+          components: [], time: now(),
+        }]);
+        setShowCart(true);
+        return true;
+      }
+
+      // B) Name match — pick the lens whose name best overlaps the reply.
+      // Tokenise on both spaces AND camelCase boundaries, so "BluBlock Pro"
+      // tokenises as ['blu','block','pro'] and matches "blue block pro".
+      const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9\s]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const tokensOf = (s) => (s || '')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]+/g, ' ')
+        .split(/\s+/)
+        .filter((x) => x.length >= 3);
+      const tN   = norm(t);
+      let nameIdx = -1;
+      let bestHit = 0;
+      lensPkgs.forEach((p, i) => {
+        const tokens = tokensOf(p.name);
+        const hits   = tokens.filter((tok) => tN.includes(tok)).length;
+        if (hits > bestHit) { bestHit = hits; nameIdx = i; }
+      });
+      if (nameIdx >= 0 && bestHit >= 1) {
+        echoUser();
+        handleSelectLens(lensPkgs[nameIdx]);
+        // After adding the lens, open cart so the customer sees the full
+        // order (frame + lens) and the "Continue to Lenskart.com" CTA.
+        setShowCart(true);
+        return true;
+      }
+    }
+
+    // ── Ordinal add (1st / 2nd / 3rd / first / last) ─────────────
+    // ADD_VERBS also accepts Hindi/Hinglish transliterations of "add"/"cart":
+    //   "एड", "ऐड"                    → add
+    //   "कट", "काट", "ऑटो कट"          → cart ("auto-cut" = colloquial cart)
+    //   "jod", "daal", "le le", "kar de", "kar do"
+    // NB: \b doesn't work around Devanagari because JS `\w` is ASCII only —
+    // so these matchers use plain `.includes` or substring-friendly regex.
+    const hasAddVerb = (
+      /(add|cart|जोड़|डाल|चुन|select)/i.test(t) ||
+      /(^|\s)(एड|ऐड|कट|काट)(\s|$)/.test(t) ||
+      /ऑटो\s*कट/.test(t) ||
+      /\b(kar\s*(do|de)|le\s*lo|le\s*le|kat\s*(do|de))\b/.test(t)
+    );
+    if (!hasAddVerb) return false;
+
+    const items = lensPkgs || frames || [];
+    let idx = -1;
+
+    // Single-item short-circuit — if there's only one product/lens being
+    // shown and the user expresses ANY add-verb ("add to cart", "कट कर दो",
+    // "ले लो", etc.), pick it without requiring an ordinal. This matches
+    // customer expectations: nothing to pick between, so "add to cart" is
+    // unambiguous.
+    if (items.length === 1) idx = 0;
+
+    // Devanagari ordinal matcher (plain includes — \b fails around Devanagari)
+    const has = (needles) => needles.some((n) => t.indexOf(n) !== -1);
+
+    if (/\b(1st|first|pehla|pahla|pehle|pahle|पहलवा)\b/.test(t)
+        || /\b(this one|that one)\b/.test(t)
+        || has(['पहला', 'पहले'])) idx = 0;
+    else if (/\b(2nd|second|dusra|doosra|dusre|doosre|dusrey)\b/.test(t)
+        || has(['दूसरा', 'दूसरे', 'सेकंड', 'सेकण्ड'])) idx = 1;
+    else if (/\b(3rd|third|teesra|tisra|teesre|tisre)\b/.test(t)
+        || has(['तीसरा', 'तीसरे', 'थर्ड'])) idx = 2;
+    else if (/\b(4th|fourth|chautha|chauthe)\b/.test(t)
+        || has(['चौथा', 'चौथे', 'फोर्थ'])) idx = 3;
+    else if (/\b(5th|fifth|panchwa|panchwe)\b/.test(t)
+        || has(['पाँचवा', 'पांचवा', 'पाँचवे', 'पांचवे', 'फिफ्थ'])) idx = 4;
+    else if (/\b(6th|sixth|chhata|chhathe)\b/.test(t)
+        || has(['छठा', 'छठे', 'सिक्स्थ'])) idx = 5;
+    else if (/\blast\b|aakhiri|aakhri|akhri/.test(t)
+        || has(['आख़िरी', 'आखिरी', 'लास्ट'])) idx = items.length - 1;
+    else {
+      const m = t.match(/\b(number|#|no\.?)\s*([1-9])\b/);
+      if (m) idx = Math.min(9, parseInt(m[2], 10) - 1);
+    }
+
+    if (idx >= 0 && idx < items.length) {
+      echoUser();
+      // Route: if the latest rich component was a lens card, pick the LENS.
+      if (lensPkgs) {
+        handleSelectLens(items[idx]);
+        // Finalise the journey — cart now has frame(s) + lens, show checkout.
+        setShowCart(true);
+      } else {
+        handleFrameSelect(items[idx]);
+      }
+      return true;
+    }
+    return false;
+  }, [messages, lang]);
+
+  // ── Core: send message (tries backend, falls back to client demo) ──
+  const sendMessage = useCallback(async (text, type = 'text', imageData = null, langOverride = null, pitchHint = null) => {
+    // Any customer turn interrupts Claire so the conversation stays snappy
+    stopSpeaking();
+    const activeLang = langOverride || lang;
+
+    // ── Post-results intent shortcuts ────────────────────────────
+    // After a carousel has been shown, the customer can naturally say:
+    //   "add the first one", "dusra add kr do", "पहला वाला जोड़ दो",
+    //   "add all", "checkout", "continue to lenskart", "सब जोड़ दो"
+    // Detect these here and act locally, without a backend round-trip.
+    if (type === 'text' && !imageData) {
+      const handled = _handlePostResultsIntent(text);
+      if (handled) return;
+    }
+
+    // If the mic captured pitch while the user answered, attach it so the
+    // backend can bias gender_pref (especially for "मेरे लिए" / "for me").
+    let gender_voice = null;
+    if (pitchHint?.gender) {
+      gender_voice = pitchHint.gender;
+      console.log('[voice-gender]', pitchHint);
+    }
+    // ── Detect pending quiz so free text / button clicks both record the answer ──
+    let pendingQuizAnswer = null; // { key, step, total }
+    let pendingQuizData   = null; // the full quiz component (needed for mini-flow routing)
+    if ((type === 'text' || type === 'quiz_answer') && !imageData) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m.role !== 'assistant' || m.answered) continue;
+        const quiz = (m.components || []).find(c => c.type === 'quiz');
+        if (quiz) {
+          pendingQuizAnswer = { key: quiz.key, step: quiz.step, total: quiz.total, msgIdx: i };
+          pendingQuizData   = quiz;
+          setMessages((prev) => prev.map((x, idx) => idx === i ? { ...x, answered: true } : x));
+          type = 'quiz_answer';
+          break;
+        }
+      }
+    }
+
+    // Mini-flow (total === 4 after face analysis, or 3 legacy): route the answer
+    // back through handleQuizAnswer which keeps the flow client-side and never
+    // lets the backend intercept a phrase like "contact lenses" as a lens inquiry.
+    if (pendingQuizAnswer && pendingQuizData && (pendingQuizData.total === 4 || pendingQuizData.total === 3)) {
+      // Log the user's answer bubble first (the normal sendMessage path would have done this)
+      setMessages((prev) => [...prev, {
+        id: Date.now() + '-u', role: 'user',
+        type: 'quiz_answer', content: text, text: text, time: now()
+      }]);
+      _handleQuizAnswerRef.current?.(text, pendingQuizAnswer.key, pendingQuizAnswer.step, null, pendingQuizData);
+      return;
+    }
+
+    const userMsg = {
+      id: Date.now() + '-u', role: 'user',
+      type: imageData ? 'image' : type,
+      content: imageData || text,
+      text: text,
+      time: now()
+    };
+
+    if (type !== 'greet') {
+      setMessages((prev) => [...prev, userMsg]);
+    }
+    setLoading(true);
+
+    const apiMessages = type === 'greet' ? [] :
+      [...messages, userMsg].map((m) => ({
+        role: m.role, type: m.type || 'text',
+        content: m.content || m.text || '',
+        text: m.text || m.content || '',
+      }));
+
+    // Advance quiz step in local session + record answer
+    const newSd = {
+      ...sessionData,
+      quiz_answers: { ...(sessionData.quiz_answers || {}) }
+    };
+    if (pendingQuizAnswer) {
+      newSd.quiz_answers[pendingQuizAnswer.key] = text;
+      newSd.quiz_step = Math.max(sessionData.quiz_step || 0, pendingQuizAnswer.step);
+      // Attach voice-derived gender hint when the gender question was answered
+      if (pendingQuizAnswer.key === 'gender' && gender_voice) {
+        newSd.quiz_answers.gender_voice = gender_voice;
+      }
+    } else if (type === 'quiz_answer' || (sessionData.quiz_step > 0 && sessionData.quiz_step < 8)) {
+      newSd.quiz_step = (sessionData.quiz_step || 0) + 1;
+    }
+    // Persist updated session immediately so later calls see the new answers
+    setSessionData(newSd);
+
+    let handled = false;
+    try {
+      const controller = new AbortController();
+      // Quiz completion triggers LLM re-rank (Gemini Pro) which can take 3-6s.
+      // 15s is comfortably above that; client demo still kicks in if backend is truly down.
+      const timer = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(`${API}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: apiMessages, session_data: { ...newSd, lang: activeLang } }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      const data = await res.json();
+      if (data.success && data.message) {
+        setMessages((prev) => [...prev, {
+          id: Date.now() + '-a', role: 'assistant',
+          text: data.message.text || '', components: data.message.components || [],
+          time: now()
+        }]);
+        if (data.session_data) {
+          setSessionData((prev) => ({ ...prev, ...data.session_data }));
+          if (data.session_data.face_data) setFaceData(data.session_data.face_data);
+        } else {
+          setSessionData(newSd);
+        }
+        handled = true;
+      }
+    } catch (err) {
+      // Backend unavailable — fall through to client-side demo below
+    }
+
+    // ── Filter-query shortcut: try /api/search before demo reply ────
+    if (!handled && type !== 'greet' && type !== 'quiz_answer') {
+      // Build cumulative tags: quiz answers + previously accumulated + new text
+      const quizBlob = Object.values(newSd.quiz_answers || {}).join(' ');
+      const quizTags = quizBlob ? extractTagsFromText(quizBlob) : {};
+      const newTags  = extractTagsFromText(text);
+      const accumulated = { ...(sessionData.active_filters || {}) };
+      for (const [k, v] of Object.entries(quizTags)) { if (v != null && !accumulated[k]) accumulated[k] = v; }
+      for (const [k, v] of Object.entries(newTags))  { if (v != null) accumulated[k] = v; }
+      const hasTag = Object.values(accumulated).some(v => v != null);
+      if (hasTag) {
+        setSessionData(prev => ({ ...prev, active_filters: accumulated }));
+        try {
+          const body = { quiz_tags: accumulated };
+          if (accumulated.product_type) body.filters = { type: accumulated.product_type };
+          const ctrl = new AbortController();
+          setTimeout(() => ctrl.abort(), 3000);
+          const sRes  = await fetch(`${API}/api/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: ctrl.signal,
+          });
+          const sData = await sRes.json();
+          if (sData.success) {
+            handled = true;
+            if (sData.no_match) {
+              setMessages((prev) => [...prev, {
+                id: Date.now() + '-a', role: 'assistant',
+                text: `🔍 ${sData.reason || 'No products found for those filters.'} Try adjusting your search!`,
+                components: [], time: now()
+              }]);
+            } else {
+              const products = (sData.products || sData.frames || []).map(enrichProduct);
+              const total    = sData.total_found || products.length;
+              const hintOrder = ['budget','product_type','color_type','color','trend','lifestyle','vision_need','age_group','gender_pref','frame_shape_pref'];
+              const filterHints = hintOrder
+                .map(k => accumulated[k] ? accumulated[k].toString().replace(/_/g,' ') : null)
+                .filter(Boolean);
+              const desc = filterHints.length ? filterHints.join(' + ') : 'your criteria';
+              setMessages((prev) => [...prev, {
+                id: Date.now() + '-a', role: 'assistant',
+                text: `🎯 Filters: **${desc}** — ${total} products found:`,
+                components: [{ type: 'carousel', title: 'Search Results', frames: products }],
+                time: now()
+              }]);
+            }
+          }
+        } catch { /* ignore — fall through to demo reply */ }
+      }
+    }
+
+    // ── Client-side fallback (no backend needed) ──────────
+    if (!handled) {
+      setSessionData(newSd);
+      const reply = clientDemoReply(text, type, newSd);
+      setMessages((prev) => [...prev, {
+        id: Date.now() + '-a', role: 'assistant',
+        text: reply.text, components: reply.components || [],
+        time: now()
+      }]);
+    }
+
+    setLoading(false); // ← always runs, no matter what
+  }, [messages, sessionData, clientDemoReply, lang]);
+
+  // ── Quiz answer handler ──────────────────────────────
+  // analysisResult is the optional Bedrock tag extraction payload
+  // ── Mini-quiz (post-face-analysis) — 3 steps, stays frontend-side ──
+  // This is used by Upload Selfie and Live Recommendation flows. Questions
+  // are product_type → style → vision. Total = 3. After Q3, call /api/search.
+  const _miniQ = (key, lang) => {
+    const pick = (en, hi) => lang === 'hi' ? hi : en;
+    if (key === 'style_pref') {
+      return {
+        question: pick('Which style feels most like you — classic and timeless, bold and trendy, minimal and clean, or adventurous?',
+                       'कौन सा स्टाइल अच्छा लगता है — क्लासिक, बोल्ड, मिनिमल, या एडवेंचरस?'),
+        options:  pick(['Classic & Timeless','Bold & Trendy','Minimal & Clean','Adventurous'],
+                       ['क्लासिक टाइमलेस','बोल्ड ट्रेंडी','मिनिमल क्लीन','एडवेंचरस']),
+      };
+    }
+    if (key === 'prescription') {
+      return {
+        question: pick('And the vision bit — do you have trouble seeing up close, or far away? Maybe it is for computer work, or just zero power for fashion?',
+                       'और नज़र — पास का नहीं दिखता, दूर का नहीं दिखता, कंप्यूटर के लिए, या सिर्फ फैशन के लिए बिना पावर के?'),
+        options:  pick(['Zero power (fashion only)','Single vision','Progressive / Bifocal','Computer / reading glasses'],
+                       ['ज़ीरो पावर (फैशन)','सिंगल विज़न','प्रोग्रेसिव / बाइफोकल','कंप्यूटर / पढ़ने के लिए']),
+      };
+    }
+    if (key === 'budget') {
+      return {
+        question: pick('Last one — budget-wise, what suits you? Under 1000, 1000 to 2000, 2000 to 3500, or premium above 3500?',
+                       'आख़िरी सवाल — बजट कितना है? हज़ार से कम, एक से दो हज़ार, दो से साढ़े तीन हज़ार, या प्रीमियम साढ़े तीन हज़ार से ज़्यादा?'),
+        options:  pick(['Under ₹1,000','₹1,000 – ₹2,000','₹2,000 – ₹3,500','Premium ₹3,500+'],
+                       ['₹1,000 से कम','₹1,000 – ₹2,000','₹2,000 – ₹3,500','प्रीमियम ₹3,500+']),
+      };
+    }
+    return null;
+  };
+
+  const _miniSearchAndRender = useCallback(async (accumulatedAnswers) => {
+    setLoading(true);
+    // Build quiz_tags from face analysis + mini answers
+    const fd = sessionData.face_data || faceData || {};
+    const tags = {
+      ...(sessionData.active_filters || {}),
+      ...(fd.gender    && { gender_pref: fd.gender }),
+      ...(fd.age_group && { age_group:   fd.age_group }),
+    };
+    // Map mini-quiz answers into canonical tags via the heuristic
+    const blob = Object.values(accumulatedAnswers).join(' ');
+    const extracted = extractTagsFromText(blob);
+    for (const [k, v] of Object.entries(extracted)) { if (v != null) tags[k] = v; }
+
+    let products = [];
+    try {
+      const resp = await fetch(`${API}/api/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quiz_tags: tags,
+          face_shape: fd.shape,
+        }),
+        signal: AbortSignal.timeout(12000),
+      });
+      const data = await resp.json();
+      if (data.success && !data.no_match) {
+        products = (data.products || data.frames || []).map(enrichProduct);
+      }
+    } catch (_) { /* fall back to local */ }
+    if (!products.length) {
+      products = clientSearchFrames(fd.shape, 6);
+    }
+    const msg = lang === 'hi'
+      ? `बहुत बढ़िया! आपके लिए ${products.length} बेस्ट फ्रेम तैयार हैं।`
+      : `Great — I've picked ${products.length} frames that'll suit you.`;
+    const title = lang === 'hi' ? 'आपके लिए चुने गए' : 'Curated for you';
+    setMessages((prev) => prev.concat({
+      id: Date.now() + '-a', role: 'assistant',
+      text: msg,
+      components: [{ type: 'carousel', title, frames: products }],
+      time: now(),
+    }));
+    setSessionData((prev) => ({ ...prev, active_filters: tags }));
+    setLoading(false);
+  }, [sessionData, faceData, lang]);
+
+  const handleQuizAnswer = useCallback((answer, key, step, analysisResult, quizData) => {
+    const isMini = quizData && (quizData.total === 4 || quizData.total === 3);
+    const newAnswers = { ...sessionData.quiz_answers, [key]: answer };
+    const newStep    = Math.max(sessionData.quiz_step || 0, step);
+
+    if (analysisResult?.tags) {
+      const t = analysisResult.tags;
+      if (t.lifestyle   && !newAnswers.lifestyle)   newAnswers.lifestyle   = t.lifestyle;
+      if (t.trend       && !newAnswers.style_pref)  newAnswers.style_pref  = t.trend;
+      if (t.color       && !newAnswers.color_pref)  newAnswers.color_pref  = t.color;
+      if (t.budget      && !newAnswers.budget)      newAnswers.budget      = t.budget;
+      if (t.vision_need && !newAnswers.prescription) newAnswers.prescription = t.vision_need;
+    }
+
+    // Mark the message as answered
+    setMessages((prev) => prev.map((m) => {
+      if (m.components?.some((c) => c.type === 'quiz' && c.step === step)) {
+        return { ...m, answered: true };
+      }
+      return m;
+    }));
+
+    if (isMini) {
+      // ── Mini flow: 4 steps → product_type → style → vision → budget ──
+      const MINI_TOTAL = 4;
+      const nextStep = step + 1;
+      setSessionData((prev) => ({ ...prev, quiz_answers: newAnswers }));
+      if (nextStep > MINI_TOTAL) {
+        _miniSearchAndRender(newAnswers);
+        return;
+      }
+      const nextKey = nextStep === 2 ? 'style_pref'
+                    : nextStep === 3 ? 'prescription'
+                    : 'budget';
+      const mq = _miniQ(nextKey, lang);
+      if (!mq) return;
+      const ack = lang === 'hi' ? 'समझ गई।' : 'Got it.';
+      setMessages((prev) => prev.concat({
+        id: Date.now() + '-a', role: 'assistant',
+        text: ack,
+        components: [{ type: 'quiz', question: mq.question, options: mq.options,
+                       step: nextStep, total: MINI_TOTAL, key: nextKey }],
+        time: now(),
+      }));
+      return;
+    }
+
+    // Normal flow — delegate to the main backend quiz
+    setSessionData((prev) => ({ ...prev, quiz_step: newStep, quiz_answers: newAnswers }));
+    sendMessage(answer, 'quiz_answer');
+  }, [sessionData, sendMessage, _miniSearchAndRender, lang]);
+
+  // Keep the ref fresh so sendMessage (defined earlier) can call it.
+  useEffect(() => { _handleQuizAnswerRef.current = handleQuizAnswer; }, [handleQuizAnswer]);
+
+  // ── Lens catalog used for post-cart recommendations ─────
+  // Mirrors backend MOCK_LENSES so client-side is self-contained.
+  const LENS_CATALOG = useMemo(() => ([
+    { id:'LENS-BLU',  name:'BluBlock Pro',        tagline:'Shield Your Eyes from Digital Strain',
+      price:699,  original_price:1299, badge:'Most Popular', thickness:'Standard 1.56', coating:'BluBlock + AR',
+      description:'Advanced blue-light blocking coating that reduces digital eye strain by up to 85%. Ideal for 4+ hours of daily screen time.',
+      features:['Blue light blocking','Anti-glare','UV 400 protection','Scratch resistant'],
+      best_for:['screen_time_high','zero_power','single_vision'] },
+    { id:'LENS-SV',   name:'ClearVision Single',  tagline:'Crystal-Clear Single Vision',
+      price:499,  original_price:999,  badge:null, thickness:'Standard 1.56', coating:'Anti-Reflective',
+      description:'Premium 1.56 index single vision lenses with industry-leading anti-reflective coating. Best for mild-to-moderate prescriptions.',
+      features:['Anti-reflective','UV protection','Scratch resistant','Lightweight'],
+      best_for:['single_vision','mild_prescription'] },
+    { id:'LENS-THIN', name:'HiIndex Thin',        tagline:'Power Without the Bulk',
+      price:1299, original_price:2499, badge:'Best for High Power', thickness:'Thin 1.67', coating:'Premium AR',
+      description:'High-index 1.67 lenses for strong prescriptions — up to 50% thinner and lighter than standard glass.',
+      features:['Ultra-thin 1.67 index','Anti-reflective','UV 400','Impact resistant'],
+      best_for:['single_vision','high_prescription'] },
+    { id:'LENS-PROG', name:'Progressive Elite',   tagline:'See All Distances, Seamlessly',
+      price:2499, original_price:4999, badge:'Premium', thickness:'1.60 Index', coating:'Elite AR',
+      description:'Premium progressive multifocal lenses with wide corridors for effortless switching between near, mid and far vision.',
+      features:['Wide corridors','No-line bifocal','Anti-reflective','UV 400'],
+      best_for:['progressive','bifocal','age_40_plus'] },
+    { id:'LENS-PHOTO',name:'Transitions Smart',   tagline:'Adapt to Every Light',
+      price:1799, original_price:3299, badge:'Smart Tech', thickness:'1.56 Standard', coating:'Photochromic',
+      description:'Photochromic lenses auto-darken in sunlight and clear indoors. One pair for both driving, reading and the outdoors.',
+      features:['Auto-tint','UV 400 protection','Anti-reflective','Scratch resistant'],
+      best_for:['outdoor','single_vision','progressive'] },
+    { id:'LENS-ZERO', name:'StyleZero Non-Rx',    tagline:'Fashion-Forward Zero Power',
+      price:299,  original_price:599,  badge:'Fashion', thickness:'Standard', coating:'Anti-Reflective',
+      description:'Premium zero-power lenses with anti-reflective coating. Pure style for fashion frames without any prescription.',
+      features:['Zero power','Anti-glare','UV protection','Crystal clear'],
+      best_for:['zero_power','fashion'] },
+  ]), []);
+
+  // Pick the 3 most relevant lens packages for a given frame + user context
+  const pickLensesFor = useCallback((frame) => {
+    const tags       = sessionData.active_filters || {};
+    const vision     = tags.vision_need || '';
+    const type       = (frame.type || tags.product_type || 'eyeglasses').toLowerCase();
+    const face       = sessionData.face_data || faceData || {};
+    const picked = [];
+    const push = (id) => { if (!picked.find(p => p.id === id)) {
+      const p = LENS_CATALOG.find(l => l.id === id); if (p) picked.push(p);
+    }};
+
+    // Contact lenses are themselves the lens — no lens package to add.
+    if (type === 'contact_lens') return [];
+    // Sunglasses: fashion-forward → zero-power + photochromic + single-vision for Rx
+    if (type === 'sunglasses') {
+      if (vision === 'zero_power') { push('LENS-ZERO'); push('LENS-PHOTO'); push('LENS-BLU'); }
+      else                          { push('LENS-PHOTO'); push('LENS-SV'); push('LENS-THIN'); }
+      return picked.slice(0, 3);
+    }
+    // Eyeglasses based on vision_need
+    if (vision === 'progressive')    { push('LENS-PROG');  push('LENS-BLU');  push('LENS-SV'); }
+    else if (vision === 'zero_power'){ push('LENS-ZERO'); push('LENS-BLU');  push('LENS-PHOTO'); }
+    else                              { push('LENS-SV');   push('LENS-BLU');  push('LENS-THIN'); }
+
+    // Nudge for older users → include Progressive
+    if (face.age_group === 'aged' && !picked.find(p => p.id === 'LENS-PROG')) {
+      picked[picked.length - 1] = LENS_CATALOG.find(l => l.id === 'LENS-PROG');
+    }
+    return picked.slice(0, 3);
+  }, [sessionData, faceData, LENS_CATALOG]);
+
+  // ── Frame add to cart ────────────────────────────────
+  const handleFrameSelect = useCallback((frame) => {
+    setCart((prev) => {
+      if (prev.some((f) => f.id === frame.id)) return prev;
+      return [...prev, frame];
+    });
+    // 1) confirmation bubble
+    const confirmMsg = lang === 'hi'
+      ? `🛒 **${frame.name}** कार्ट में जोड़ दिया गया! बढ़िया चुनाव।`
+      : `🛒 **${frame.name}** added to cart. Great choice!`;
+
+    // 2) lens guidance — only for frames that TAKE lenses. Contact lenses are
+    //    themselves the lens, so skip this bubble entirely.
+    const packages = pickLensesFor(frame);
+    const isContact = (frame.type || '').toLowerCase() === 'contact_lens';
+
+    if (!packages.length || isContact) {
+      setMessages((prev) => [...prev, {
+        id: Date.now() + '-c', role: 'assistant',
+        text: confirmMsg, components: [], time: now()
+      }]);
+      return;
+    }
+
+    const reasoning = (() => {
+      const vision = sessionData.active_filters?.vision_need;
+      const r = [];
+      if (vision === 'progressive') r.push(lang === 'hi'
+        ? 'Progressive Elite आपकी पास और दूर दोनों की नज़र के लिए बेस्ट है।'
+        : 'Progressive Elite covers near, mid and far vision in one lens.');
+      else if (vision === 'zero_power') r.push(lang === 'hi'
+        ? 'StyleZero आपकी fashion-only ज़रूरत के लिए perfect है।'
+        : 'StyleZero suits your fashion-only need without any prescription.');
+      else r.push(lang === 'hi'
+        ? 'ClearVision Single आपकी single vision के लिए best value है।'
+        : 'ClearVision Single is the best value for single-vision prescriptions.');
+      r.push(lang === 'hi'
+        ? 'BluBlock रोज़ 4+ घंटे screen use करने वालों के लिए ज़रूरी है।'
+        : 'BluBlock is a must if you spend 4+ hours on screens daily.');
+      return r;
+    })();
+
+    const n = packages.length;  // match the actual count so wording stays truthful
+    const lensText = lang === 'hi'
+      ? `अब lens चुनिए — आपके प्रेस्क्रिप्शन और lifestyle के हिसाब से ये ${n} options बेस्ट हैं:`
+      : `Now let's pick the lenses — based on your prescription and lifestyle, here are the top ${n} for this frame:`;
+
+    setMessages((prev) => [...prev, {
+      id: Date.now() + '-c', role: 'assistant',
+      text: confirmMsg, components: [], time: now()
+    }, {
+      id: Date.now() + '-l', role: 'assistant',
+      text: lensText,
+      components: [{ type:'lens_rec', packages, reasoning }],
+      time: now()
+    }]);
+  }, [lang, pickLensesFor, sessionData]);
+
+  // ── Lens package selection (from LensRecommendation card) ──────────
+  // Adds the chosen lens to the cart as a line item and confirms in chat.
+  const handleSelectLens = useCallback((pkg) => {
+    setCart((prev) => {
+      // Treat the lens like a cart item — dedupe by id
+      if (prev.some((x) => x.id === pkg.id)) return prev;
+      return [...prev, {
+        id: pkg.id, name: pkg.name,
+        brand: 'Lenskart Lenses',
+        price: pkg.price, original_price: pkg.original_price,
+        style: 'lens', frame_shape: 'lens', color: 'clear',
+        type: 'lens_package', tags: ['lens', pkg.id.toLowerCase()],
+        _lens: true,
+      }];
+    });
+    const msg = lang === 'hi'
+      ? `✨ **${pkg.name}** lens जोड़ दी — कुल ₹${pkg.price} अतिरिक्त।`
+      : `✨ **${pkg.name}** lens added — +₹${pkg.price}.`;
+    setMessages((prev) => [...prev, {
+      id: Date.now() + '-la', role: 'assistant',
+      text: msg, components: [], time: now(),
+    }]);
+  }, [lang]);
+
+  // ── On-demand photo for fit score (keeps session intact) ─────────────
+  // Called from <FitUploadPrompt /> after the user picks an image. We
+  // silently store it into sessionData.face_data so subsequent fit scores
+  // work without re-asking. No mini-quiz is triggered.
+  const handleFitPhotoUploaded = useCallback(async (dataUri, frame) => {
+    // Upload to backend (just to get a /uploads/ URL the API can read)
+    setLoading(true);
+    let face = null;
+    try {
+      const resp = await fetch(`${API}/api/face-analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUri }),
+        signal: AbortSignal.timeout(20000),
+      });
+      const data = await resp.json();
+      if (data.has_face === false) {
+        setMessages((prev) => [...prev, {
+          id: Date.now() + '-a', role: 'assistant',
+          text: lang === 'hi'
+            ? '😕 फ़ोटो में चेहरा नहीं दिखा। कोई दूसरी photo try करें।'
+            : "😕 I couldn't spot a face in that photo. Try another one?",
+          components: [], time: now(),
+        }]);
+        setLoading(false);
+        return;
+      }
+      if (data.success) face = data;
+    } catch (_) { /* network issue — still try local fit */ }
+
+    if (face) {
+      setFaceData(face);
+      // Also mark last_shown so the backend doesn't re-issue the face_analysis
+      // card the next time the user says anything (e.g. "kisi aur ke liye").
+      setSessionData((prev) => ({ ...prev, face_data: face, last_shown: 'face_analysis' }));
+    }
+    setLoading(false);
+    // Defer the fit-score call so React can flush the new face_data first.
+    setTimeout(() => handleFitScoreRef.current?.(frame), 50);
+  }, [lang]);
+
+  // Ref to avoid stale closure on handleFitScore (defined just below)
+  const handleFitScoreRef = useRef(null);
+
+  // ── Fit score request (LLM-backed size-confidence widget) ───────────
+  // If we already have the customer's face photo in session, post it plus
+  // the frame details to /api/fit-score so Gemini can judge the specific
+  // pairing. Otherwise ask for a photo — but DO NOT start the full selfie
+  // mini-quiz flow, and preserve the ongoing session.
+  const handleFitScore = useCallback(async (frame) => {
+    const fd = sessionData.face_data || faceData || {};
+    const imageUrl = fd.url || null;
+
+    // No image → one-off photo prompt that runs fit score only
+    if (!imageUrl) {
+      setMessages((prev) => [...prev, {
+        id: Date.now() + '-fs-ask', role: 'assistant',
+        text: lang === 'hi'
+          ? `आपके चेहरे के साथ ${frame.name} कैसा लगेगा, ये बताने के लिए एक फ़ोटो चाहिए।`
+          : `To show exactly how ${frame.name} will look and fit on you, I need a quick photo.`,
+        components: [{ type: 'fit_upload', frame }],
+        time: now(),
+      }]);
+      return;
+    }
+
+    // Show spinner bubble while Gemini analyses
+    const loadingId = Date.now() + '-fs-load';
+    setMessages((prev) => [...prev, {
+      id: loadingId, role: 'assistant',
+      text: lang === 'hi'
+        ? `🔍 ${frame.name} का फिट check कर रही हूँ…`
+        : `🔍 Checking how ${frame.name} fits you…`,
+      components: [], time: now(), _loading: true
+    }]);
+
+    let result = null;
+    try {
+      const resp = await fetch(`${API}/api/fit-score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url: imageUrl, frame }),
+        signal: AbortSignal.timeout(20000),
+      });
+      result = await resp.json();
+    } catch (_) { /* fall through to client fallback */ }
+
+    setMessages((prev) => prev.filter(m => m.id !== loadingId));
+
+    if (!result || !result.success || result.has_face === false) {
+      // Fallback: deterministic client-side score so the widget never blanks
+      const faceShape = (fd.shape || 'Oval').toLowerCase();
+      const suits = (frame.shape_suitability || frame.face_shape_recommendation || []).map(s => String(s).toLowerCase());
+      const idHash = (() => { let h = 0; for (const c of String(frame.id||'')) h = ((h<<5)-h+c.charCodeAt(0))|0; return Math.abs(h); })();
+      const score   = suits.includes(faceShape) ? 88 + (idHash % 10) : 62 + (idHash % 12);
+      const verdict = score >= 90 ? 'Perfect Match' : score >= 75 ? 'Great Fit' : 'Good Fit';
+      result = {
+        score, verdict, size_match: 'just right',
+        reasons: [
+          `${frame.style || 'This frame'} ${suits.includes(faceShape) ? 'complements' : 'pairs with'} your ${fd.shape || 'face'} shape.`,
+          `Frame width is proportionally ${score >= 80 ? 'ideal' : 'acceptable'} for your face.`,
+        ],
+      };
+    }
+
+    const verdictHi = { 'Perfect Match':'परफेक्ट मैच', 'Great Fit':'बहुत अच्छा फिट',
+                        'Good Fit':'अच्छा फिट', 'Okay Fit':'ठीक-ठाक फिट',
+                        'Not Ideal':'अच्छा नहीं' };
+    const sizeHi    = { 'too small':'थोड़ा छोटा', 'just right':'परफेक्ट साइज़', 'too large':'थोड़ा बड़ा' };
+
+    const introText = lang === 'hi'
+      ? `${frame.name} का आपके चेहरे पर fit score:`
+      : `Here's the fit analysis for ${frame.name}:`;
+    setMessages((prev) => [...prev, {
+      id: Date.now() + '-fs', role: 'assistant',
+      text: introText,
+      components: [{
+        type: 'fit_score',
+        frame_id:   frame.id, frame_name: frame.name,
+        score:      result.score,
+        verdict:    lang === 'hi' ? (verdictHi[result.verdict] || result.verdict) : result.verdict,
+        size_match: lang === 'hi' ? (sizeHi[result.size_match] || result.size_match) : result.size_match,
+        reasons:    result.reasons || [],
+        image_url:  imageUrl,
+      }],
+      time: now(),
+    }]);
+  }, [sessionData, faceData, lang]);
+
+  // Keep ref fresh so handleFitPhotoUploaded can trigger the latest
+  // handleFitScore after setSessionData flushes.
+  useEffect(() => { handleFitScoreRef.current = handleFitScore; }, [handleFitScore]);
+
+  // ── Photo upload handler — works fully client-side ───
+  // Send the photo to backend for LLM vision analysis, then kick off the
+  // 3-question mini-quiz. Used by both Upload Selfie and Live Recommendation.
+  const handlePhotoUpload = useCallback(async (imageDataUri) => {
+    const photoMsg = {
+      id: Date.now() + '-u', role: 'user',
+      type: 'image', content: imageDataUri, text: 'Uploaded photo',
+      time: now()
+    };
+    const loadingMsg = {
+      id: Date.now() + '-load', role: 'assistant',
+      text: lang === 'hi'
+        ? '📸 फ़ोटो को AI से पढ़ रही हूँ… एक सेकंड।'
+        : '📸 Reading your photo with AI… one moment.',
+      components: [], time: now(), _loading: true
+    };
+    setMessages((prev) => [...prev, photoMsg, loadingMsg]);
+    setLoading(true);
+
+    let fd = null;
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 20000);
+      const resp = await fetch(`${API}/api/face-analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageDataUri }),
+        signal: ctrl.signal,
+      });
+      const data = await resp.json();
+      if (data.has_face === false) {
+        setMessages((prev) => prev.filter((m) => !m._loading).concat({
+          id: Date.now() + '-a', role: 'assistant',
+          text: lang === 'hi'
+            ? '😕 फ़ोटो में चेहरा नहीं दिखा। कृपया दोबारा कोशिश करें।'
+            : "😕 I couldn't spot a face in that photo. Could you try another one?",
+          components: [], time: now()
+        }));
+        setLoading(false);
+        return;
+      }
+      if (!data.success) throw new Error(data.error || 'analysis failed');
+      fd = data;
+    } catch (err) {
+      // Fall back to deterministic local analysis so the demo still runs
+      fd = clientAnalyzeFace(imageDataUri);
+    }
+
+    setFaceData(fd);
+    setSessionData((prev) => ({
+      ...prev,
+      face_data:     fd,
+      last_shown:    'face_analysis',
+      // Seed quiz_answers from vision so later recommendations already know
+      // the user's gender / age / shape.
+      quiz_answers: {
+        ...(prev.quiz_answers || {}),
+        ...(fd.gender && { gender: fd.gender === 'male' ? 'For him' : fd.gender === 'female' ? 'For her' : 'For everyone' }),
+        ...(fd.age && { age: String(fd.age) }),
+      },
+      active_filters: {
+        ...(prev.active_filters || {}),
+        ...(fd.gender    && { gender_pref: fd.gender }),
+        ...(fd.age_group && { age_group:   fd.age_group }),
+      },
+    }));
+
+    // Speakable face-analysis announcement (skipped if shape is missing)
+    const faceShape  = fd.shape || 'balanced';
+    const confText   = fd.confidence ? ` (${Math.round(fd.confidence)}% confidence)` : '';
+    const analysisText = lang === 'hi'
+      ? `बहुत अच्छे! आपके चेहरे का shape ${faceShape} है${confText}। इन फ्रेम स्टाइल्स को आपके फ़ीचर्स बहुत अच्छे से सूट करेंगे।`
+      : `Nice! I can see you have a ${faceShape} face shape${confText}. These frame styles really suit your features.`;
+
+    // Mini-quiz Q1: product type (eyeglasses / sunglasses / contacts)
+    const miniQ1 = lang === 'hi'
+      ? { question: 'अब बताइए — आपको eyeglasses चाहिए, sunglasses, या contact lenses?',
+          options:  ['चश्मा (Eyeglasses)','सनग्लास (Sunglasses)','कॉन्टैक्ट लेंस (Contact lenses)'] }
+      : { question: 'Now tell me — are we looking at eyeglasses, sunglasses, or contact lenses?',
+          options:  ['Eyeglasses','Sunglasses','Contact lenses'] };
+
+    // Two separate assistant messages so TTS speaks the face analysis first,
+    // pauses, then speaks the next question. Auto-mic only opens after the
+    // quiz message (which is the one with the pending quiz component).
+    const analysisMsg = {
+      id: Date.now() + '-fa', role: 'assistant',
+      text: analysisText,
+      components: [{ type: 'face_analysis', ...fd }],
+      time: now(),
+    };
+    const quizMsg = {
+      id: Date.now() + '-q1', role: 'assistant',
+      text: '',   // empty so TTS only speaks the question itself
+      components: [{ type: 'quiz', ...miniQ1, step: 1, total: 4, key: 'product_type' }],
+      time: now(),
+    };
+    setMessages((prev) => prev.filter((m) => !m._loading).concat([analysisMsg, quizMsg]));
+    setLoading(false);
+  }, [lang]);
+
+  // ── New chat: fully reset session and reopen the language picker ─────
+  const newChat = () => {
+    stopSpeaking();
+    setMessages([]);
+    setFaceData(null);
+    setCart([]);
+    setSessionData({ quiz_step: 0, quiz_answers: {}, face_data: null, last_shown: null });
+    _spokenRef.current = new Set();
+    setLang(null);
+    try {
+      sessionStorage.removeItem('claire_lang');
+      sessionStorage.removeItem('claire_mode');
+    } catch {}
+  };
+
+  // ── Render ───────────────────────────────────────────
+  return (
+    <div className="flex h-full" style={{ background: '#070E1C' }}>
+
+      {/* Sidebar */}
+      <Sidebar faceData={faceData} cartCount={cart.length}
+               onCart={() => setShowCart(true)}
+               onNewChat={newChat}
+               onUpload={() => setShowUpload(true)}
+               onLive={() => setShowLive(true)} />
+
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 py-3"
+             style={{ borderBottom: '1px solid rgba(0,195,195,.1)', background: '#070E1C' }}>
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 md:hidden">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                 style={{ background: 'linear-gradient(135deg, #00C3C3, #7C3AED)' }}>👓</div>
+            <span className="font-bold text-sm gradient-text">Claire AI</span>
+          </div>
+
+          <div className="hidden md:flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-lk-teal" style={{ boxShadow: '0 0 6px #00C3C3' }} />
+            <span className="text-sm font-semibold text-white">Claire</span>
+            <span className="text-xs text-slate-500">— AI Eyewear Stylist</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {faceData && (
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs"
+                   style={{ background: 'rgba(0,195,195,.1)', color: '#00C3C3', border: '1px solid rgba(0,195,195,.2)' }}>
+                {FACE_EMOJI[faceData.shape]} {faceData.shape} face
+              </div>
+            )}
+            <button onClick={() => setShowUpload(true)}
+                    className="px-3 py-1.5 rounded-full text-xs btn-ghost">
+              📸 Upload
+            </button>
+            <button onClick={() => setShowCart(true)}
+                    className="relative px-3 py-1.5 rounded-full text-xs btn-ghost">
+              🛒
+              {cart.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-xs font-bold flex items-center justify-center"
+                      style={{ background: '#FF6B35', color: '#fff', fontSize: 10 }}>
+                  {cart.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Messages */}
+        {/* Language selector overlay */}
+        {!lang && <LanguageSelector onPick={pickLanguage} />}
+
+        {lang && mode === 'voice' ? (
+          <VoiceOnlyView
+            lang={lang}
+            onExit={() => { setMode('hybrid'); try { sessionStorage.setItem('claire_mode', 'hybrid'); } catch {} }}
+            onSend={sendMessage}
+            registerAutoMic={(fn) => { _autoMicRef.current = fn; }}
+            lastAssistant={[...messages].reverse().find(m => m.role === 'assistant')}
+            onFrameSelect={handleFrameSelect}
+            onFitScore={handleFitScore}
+            onFitPhotoUploaded={handleFitPhotoUploaded}
+            onSelectLens={handleSelectLens}
+          />
+        ) : (
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 chat-gradient">
+            {messages.length === 0 && !loading && lang && (
+              <div className="flex flex-col items-center justify-center h-full text-center py-10">
+                <div className="text-5xl mb-4">👓</div>
+                <h2 className="text-xl font-bold gradient-text mb-2">Welcome to Lenskart Claire</h2>
+                <p className="text-slate-400 text-sm max-w-xs">Your AI eyewear stylist is warming up...</p>
+              </div>
+            )}
+
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} msg={msg}
+                             onAnswer={handleQuizAnswer}
+                             onFrameSelect={handleFrameSelect}
+                             onFitScore={handleFitScore}
+                             onFitPhotoUploaded={handleFitPhotoUploaded}
+                             onSelectLens={handleSelectLens}
+                             lang={lang} />
+            ))}
+
+            {loading && <TypingIndicator />}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+
+        {/* Conversation status pill (speaking / listening) */}
+        {lang && mode !== 'voice' && <ConversationStatus lang={lang} />}
+
+        {/* Input — only in hybrid mode */}
+        {mode !== 'voice' && (
+          <ChatInput onSend={sendMessage}
+                     onUpload={() => setShowUpload(true)}
+                     loading={loading}
+                     lang={lang}
+                     disabled={!lang}
+                     registerAutoMic={(fn) => { _autoMicRef.current = fn; }} />
+        )}
+      </div>
+
+      {/* Modals */}
+      {showUpload && (
+        <PhotoUploadModal
+          onUpload={(uri) => { handlePhotoUpload(uri); setShowUpload(false); }}
+          onClose={() => setShowUpload(false)} />
+      )}
+      {showLive && (
+        <LiveRecommendModal
+          lang={lang || 'en'}
+          onCaptured={(uri) => { setShowLive(false); handlePhotoUpload(uri); }}
+          onClose={() => setShowLive(false)} />
+      )}
+      {showCart && (
+        <CartModal
+          cart={cart}
+          onClose={() => setShowCart(false)}
+          onRemove={(id) => setCart((prev) => prev.filter((f) => f.id !== id))} />
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOOTSTRAP
+════════════════════════════════════════════════════════════ */
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
